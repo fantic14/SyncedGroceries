@@ -15,7 +15,7 @@ Unit tests cover stored-data validation, empty-list preservation, shopping actio
 Follow [backend setup](BACKEND.md). These are required before marking milestone 1 complete; no hosted project or phone run is implied by passing the SQL tests.
 
 - [ ] No environment configuration: grocery preview opens and Household & account explains sharing is not connected.
-- [ ] Configure a development project, apply the migration, and set the email template to `{{ .Token }}`.
+- [ ] Configure a development project, apply the migrations, enable custom SMTP, and then set the email template to `{{ .Token }}`. New free-tier projects require SMTP before editing templates; verify the sender can deliver to both test accounts.
 - [ ] Request a code, enter an invalid/expired code, resend after cooldown, then sign in successfully.
 - [ ] Close/reopen on both phones: encrypted native session restores; background/resume refresh works.
 - [ ] Create household on one account, generate an invite, and join with a different account/OS.

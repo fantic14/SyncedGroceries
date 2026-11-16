@@ -60,6 +60,23 @@ The SQL Editor is normally the database owner with no signed-in app user. Exerci
 
 In **Authentication → Sign In / Providers**, enable Email and allow new-user signups. Keep anonymous sign-in disabled. The app creates a user on the first email-code request and verifies the code inside the app.
 
+**Configure custom SMTP before editing the templates.** New free-tier Supabase projects created from June 3, 2026 cannot edit authentication templates while using the default sender. This app needs numeric codes, so the default magic-link email is insufficient. See [Supabase's change notice](https://supabase.com/changelog/46599-changes-to-email-template-customisation-on-free-tier).
+
+For the first test on your own email address, create a [Resend](https://resend.com) account and a sending API key. Enable custom SMTP in Supabase **Authentication → SMTP Settings** using:
+
+| Setting      | Value                   |
+| ------------ | ----------------------- |
+| Sender email | `onboarding@resend.dev` |
+| Sender name  | `Synced Groceries`      |
+| Host         | `smtp.resend.com`       |
+| Port         | `465`                   |
+| Username     | `resend`                |
+| Password     | Your Resend API key     |
+
+Save/enable the SMTP configuration, then return to the email templates. Keep the API key only in Supabase's SMTP password field, never in Expo variables or `.env.local`. These settings come from [Resend's SMTP documentation](https://resend.com/docs/send-with-smtp).
+
+The `resend.dev` test sender can send only to the email associated with your Resend account. Use that exact address for the first app sign-in. Before testing with flatmates or a second account, add a domain you control to Resend, publish its required DNS records, verify it, and change the Supabase sender to an address on that domain. See [Resend's test-domain limits](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain). If you already have another SMTP provider, use its settings and sender-verification requirements instead.
+
 In **Authentication → Email Templates → Magic Link**, use the body from [magic-link.html](../supabase/templates/magic-link.html). It contains:
 
 ```html
@@ -68,9 +85,7 @@ In **Authentication → Email Templates → Magic Link**, use the body from [mag
 
 Use the same code body for **Confirm signup** so the first-account email also contains an enterable code. Set the subject to `Your Synced Groceries sign-in code`. Six-digit codes with the normal 60-second resend cooldown work with the app. No callback URL or mobile deep link is needed for code entry.
 
-Configure a custom SMTP provider in Supabase **Authentication → SMTP Settings** for ordinary tester email addresses. Enter its host, port, username, password, sender address, and sender name, and finish any domain/sender verification required by that provider. Test both the first sign-in and a later sign-in.
-
-For an initial one-person smoke test, the default sender can email your existing Supabase project-team address, subject to its restrictive limits. It refuses other recipients. Flatmates join the app using household invitations; they do not need Supabase dashboard access. See the [SMTP restrictions](https://supabase.com/docs/guides/auth/auth-smtp) and [email OTP guide](https://supabase.com/docs/guides/auth/auth-email-passwordless).
+Test both the first sign-in and a later sign-in. Flatmates join the app using household invitations; they do not need Supabase dashboard access. See the [SMTP restrictions](https://supabase.com/docs/guides/auth/auth-smtp) and [email OTP guide](https://supabase.com/docs/guides/auth/auth-email-passwordless).
 
 The tracked `supabase/config.toml` and HTML template configure an optional **local** stack. `db push` does not apply these Auth, SMTP, or API settings to the hosted project; configure those in the dashboard as described above.
 
