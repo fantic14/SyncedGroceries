@@ -1,11 +1,11 @@
 # Identity and household backend
 
-Milestone 1 adds the database boundary for accounts and households. Groceries and notes remain in the separate local preview until milestone 2 connects their data layer. This repository does not include a deployed Supabase project or credentials.
+Milestone 1 adds the database boundary for accounts and households. Milestone 2 adds a separate online shared list/note described in [SHARED_BACKEND.md](SHARED_BACKEND.md); the original local preview remains independent. This repository does not include a deployed Supabase project or credentials.
 
 ## Connect a development project
 
 1. Create a Supabase development project in the appropriate region for the household. Keep production and development projects separate.
-2. Apply `supabase/migrations/202611160001_household_identity.sql` as the database owner. The migration is transactional and expects Supabase's existing `auth.users`, `auth.uid()`, `anon`, and `authenticated` objects.
+2. Apply `supabase/migrations/202611160001_household_identity.sql`, then `202611160002_shared_groceries.sql`, as the database owner. The migrations are transactional and expect Supabase's existing `auth.users`, `auth.uid()`, `anon`, and `authenticated` objects. Apply each exactly once.
 3. Enable email authentication. Configure the **Magic Link email template** to show `{{ .Token }}` so users can enter the email code in the app. This implementation uses email OTP verification rather than a browser redirect, so it does not require a magic-link callback/deep link.
 4. Copy `.env.example` to `.env.local`. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the project's Connect dialog. Only a public/publishable key belongs in the mobile app. Never use a secret or service-role key.
 5. Restart the Expo server after changing environment variables. Use two real test accounts to check the create/invite/join flow against the hosted Auth and API services.

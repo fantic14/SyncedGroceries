@@ -48,7 +48,7 @@ References: [Expo project setup](https://docs.expo.dev/get-started/create-a-proj
 
 ## Planned cloud data model
 
-Identity, household, membership, invitation, and private invitation-attempt tables are implemented in the [initial migration](../supabase/migrations/202611160001_household_identity.sql). Grocery/note/operation tables below remain a design sketch for the next milestones.
+Identity, household, membership, invitation, and private invitation-attempt tables are implemented in the [initial migration](../supabase/migrations/202611160001_household_identity.sql). Shared lists, items, notes, and private applied operations are implemented in the [second migration](../supabase/migrations/202611160002_shared_groceries.sql). Local SQLite cache/outbox tables remain planned.
 
 | Entity               | Core fields                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -103,6 +103,8 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ### 2. Connected groceries and notes
 
+**Status: implemented locally; hosted and two-phone acceptance checks pending.** Shared grocery editing and attribution, explicit note saving/conflict resolution, scoped RLS/RPCs, Realtime invalidation, foreground/subscription reconciliation, and a 15-second foreground safety refresh are implemented. Accepted operations are idempotent; uncertain requests retain their exact IDs/payloads in memory for retry. Local drafts survive transient refresh failures within the active account screen. See [shared backend setup](SHARED_BACKEND.md). This does not yet include durable offline writes.
+
 - Introduce a repository/service layer backed by the cloud schema.
 - Add item editing and edit attribution. Connect the household note.
 - Add foreground Realtime subscriptions, resume reconciliation, and visible connection errors.
@@ -139,6 +141,6 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ## Next concrete task
 
-Configure the Supabase development project using [BACKEND.md](BACKEND.md), then verify email delivery/session restoration and a two-account create/invite/join flow through the hosted API. Record iPhone/Samsung results before marking milestone 1 complete. Next, implement milestone 2's shared grocery/note schema and repository, keeping the local preview separate unless the user explicitly imports it.
+Configure the Supabase development project using [BACKEND.md](BACKEND.md) and [SHARED_BACKEND.md](SHARED_BACKEND.md). Verify email delivery, create/invite/join, live edits, conflicts, and retries on an iPhone and Samsung. Milestones 1 and 2 remain pending that hosted/device acceptance. The next implementation milestone is the SQLite cache and durable outbox, including restart recovery and tombstone reconciliation.
 
 The chosen authentication flow is numeric email OTP. The backend project and region still require configuration. The local preview and SQL tests work without credentials.
