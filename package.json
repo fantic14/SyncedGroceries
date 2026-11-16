@@ -16,7 +16,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm test && npm run format:check",
-    "build": "expo export --platform all"
+    "build": "expo export --platform all",
+    "backend:check": "node --env-file-if-exists=.env.local scripts/check-backend.ts",
+    "eas": "npx --yes eas-cli@27.10.0",
+    "supabase": "npx --yes supabase@3.1.0",
+    "apk:android": "npm run eas -- build --platform android --profile preview",
+    "eas-build-pre-install": "node scripts/check-backend.ts --build"
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
