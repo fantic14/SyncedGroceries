@@ -276,7 +276,7 @@ export function HouseholdScreen({
                 <Text style={styles.previewTitle}>Made for your people.</Text>
                 <Text style={styles.previewText}>
                   This preview list stays on your phone. Set up your household
-                  separately; shared groceries are coming next.
+                  separately to use shared groceries and notes.
                 </Text>
               </View>
             </View>

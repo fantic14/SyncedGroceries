@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -22,12 +23,122 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme';
+import { SharedHouseholdScreen } from '../shared/SharedHouseholdScreen';
+import { useSharedHousehold } from '../shared/useSharedHousehold';
 import { useIdentity } from './useIdentity';
 
 type Identity = ReturnType<typeof useIdentity>;
 
 export function IdentityScreen({ onClose }: { onClose: () => void }) {
   const identity = useIdentity();
+  return identity.session && identity.household && identity.householdLoaded ? (
+    <HouseholdWorkspace
+      key={`${identity.session.user.id}:${identity.household.id}`}
+      identity={identity}
+      onClose={onClose}
+    />
+  ) : (
+    <IdentityContent identity={identity} onClose={onClose} />
+  );
+}
+
+function HouseholdWorkspace({
+  identity,
+  onClose,
+}: {
+  identity: Identity;
+  onClose: () => void;
+}) {
+  const household = identity.household!;
+  const controller = useSharedHousehold(
+    household.id,
+    identity.session!.user.id,
+  );
+  const [open, setOpen] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
+  function guardAction(action: () => void) {
+    if (controller.busy) return;
+    if (
+      controller.pending ||
+      (controller.snapshot &&
+        controller.noteDraft !== controller.snapshot.note.body)
+    ) {
+      setLeaveAction(() => action);
+      setConfirmLeave(true);
+    } else action();
+  }
+  return (
+    <>
+      {open ? (
+        <SharedHouseholdScreen
+          householdName={household.name}
+          members={identity.members}
+          controller={controller}
+          onClose={() => setOpen(false)}
+        />
+      ) : (
+        <IdentityContent
+          identity={identity}
+          onClose={() => guardAction(onClose)}
+          guardAccountAction={guardAction}
+          onOpenShared={() => setOpen(true)}
+        />
+      )}
+      <Modal
+        transparent
+        visible={confirmLeave}
+        animationType="fade"
+        onRequestClose={() => setConfirmLeave(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            padding: 24,
+            backgroundColor: '#00000066',
+          }}
+        >
+          <Card>
+            <Text style={styles.sectionTitle}>Leave unsaved work?</Text>
+            <Text style={styles.body}>
+              Your note draft and any unconfirmed request stay in memory only.
+              Leaving your account screen will discard them. A submitted request
+              may already have reached your household.
+            </Text>
+            <Button
+              title="Keep editing"
+              onPress={() => {
+                setConfirmLeave(false);
+                setOpen(true);
+              }}
+            />
+            <Button
+              title="Continue and discard local work"
+              danger
+              onPress={() => {
+                setConfirmLeave(false);
+                leaveAction?.();
+              }}
+            />
+          </Card>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+function IdentityContent({
+  identity,
+  onClose,
+  onOpenShared,
+  guardAccountAction,
+}: {
+  identity: Identity;
+  onClose: () => void;
+  onOpenShared?: () => void;
+  guardAccountAction?: (action: () => void) => void;
+}) {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
@@ -133,6 +244,7 @@ export function IdentityScreen({ onClose }: { onClose: () => void }) {
                   <HouseholdDashboard
                     key={`${identity.session.user.id}:${identity.household.id}`}
                     identity={identity}
+                    onOpenShared={onOpenShared}
                     onConfirmationLayout={(y) =>
                       scroll.current?.scrollTo({
                         y: Math.max(0, y - 20),
@@ -151,6 +263,7 @@ export function IdentityScreen({ onClose }: { onClose: () => void }) {
                   <AccountActions
                     key={identity.session.user.id}
                     identity={identity}
+                    guardAction={guardAccountAction}
                   />
                 )}
               </>
@@ -165,7 +278,13 @@ export function IdentityScreen({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AccountActions({ identity }: { identity: Identity }) {
+function AccountActions({
+  identity,
+  guardAction = (action) => action(),
+}: {
+  identity: Identity;
+  guardAction?: (action: () => void) => void;
+}) {
   const [confirmDeletion, setConfirmDeletion] = useState(false);
 
   return (
@@ -177,7 +296,11 @@ function AccountActions({ identity }: { identity: Identity }) {
         title="Sign out"
         secondary
         disabled={identity.busy}
-        onPress={() => void identity.signOut()}
+        onPress={() =>
+          guardAction(() => {
+            void identity.signOut();
+          })
+        }
       />
       {confirmDeletion ? (
         <View style={styles.confirmCard}>
@@ -195,7 +318,11 @@ function AccountActions({ identity }: { identity: Identity }) {
             }
             danger
             disabled={identity.busy}
-            onPress={() => void identity.deleteAccount()}
+            onPress={() =>
+              guardAction(() => {
+                void identity.deleteAccount();
+              })
+            }
           />
           <Button
             title="Keep my account"
@@ -444,9 +571,11 @@ type Confirmation =
 function HouseholdDashboard({
   identity,
   onConfirmationLayout,
+  onOpenShared,
 }: {
   identity: Identity;
   onConfirmationLayout: (y: number) => void;
+  onOpenShared?: () => void;
 }) {
   const { household, session } = identity;
   const invitation = identity.generatedInvite;
@@ -521,10 +650,13 @@ function HouseholdDashboard({
         <View style={styles.notice}>
           <Ionicons name="leaf-outline" size={22} color={colors.green} />
           <Text style={styles.noticeText}>
-            Your household is ready. Shared groceries and notes are coming next.
-            The local preview list does not sync with this household yet.
+            Your shared groceries and note live here. The separate local preview
+            is never uploaded automatically.
           </Text>
         </View>
+        {onOpenShared && (
+          <Button title="Open shared groceries & note" onPress={onOpenShared} />
+        )}
         <Button
           title="Refresh household"
           secondary
@@ -666,7 +798,7 @@ function HouseholdDashboard({
                 ? `Make ${confirmation.name} the owner? You will become a member and will no longer manage invitations or remove members.`
                 : confirmation.kind === 'revoke'
                   ? 'Revoke this invitation? The code will stop working immediately.'
-                  : 'Leave this household? You will need a new invitation to rejoin.'}
+                  : 'Leave this household? You will need a new invitation to rejoin. Save any shared note draft first; unsaved work on this phone will be discarded.'}
           </Text>
           <Button
             title={identity.busy ? 'Please wait…' : 'Confirm change'}
