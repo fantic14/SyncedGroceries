@@ -52,11 +52,11 @@ Run on an iPhone and a Samsung Galaxy phone, plus the browser preview for a quic
 - [ ] Touch targets work comfortably with one thumb.
 - [ ] The grocery preview clearly says changes stay on the current phone; there is no false “synced” status.
 
-Saving is debounced by 300 ms. Abrupt process termination before storage acknowledges a write can lose that last edit; wait for saved status when testing persistence. Durable transactional offline writes belong to milestone 3.
+The independent local preview debounces saving by 300 ms. Wait for its saved status before termination. The shared household uses milestone 3's atomic durable cache/outbox, described in [OFFLINE.md](OFFLINE.md).
 
 ## Connected MVP: hosted/device acceptance
 
-Milestone 2 provides the online shared UI and backend implementation. Run these checks against a configured project and actual phones; local unit/PostgreSQL tests do not establish live Realtime delivery. Durable offline/restart scenarios still require milestone 3.
+Milestones 2 and 3 provide shared online edits and durable offline replay. Run these checks against a configured project and actual phones; local SQLite/PostgreSQL tests do not establish native runtime or Realtime delivery.
 
 - [ ] Apply both migrations and verify shared tables are enabled in the Realtime publication.
 - [ ] Use the shared screen on both devices; a new household starts with an empty shared list/note, not local preview examples.
@@ -64,9 +64,16 @@ Milestone 2 provides the online shared UI and backend implementation. Run these 
 - [ ] Concurrent same-field grocery edits show a conflict and retain the edit form for review.
 - [ ] Concurrent note changes show both the latest server text and the local draft. “Keep mine” uses the latest revision and can conflict again safely.
 - [ ] Drop a write response after the server commits; retry uses the same operation ID and does not duplicate or reverse the edit.
-- [ ] Returning to household settings preserves the in-memory draft; leaving the account screen or signing out warns before discarding it.
+- [ ] Drafts and queued edits survive returning to settings, closing the account screen, and force-stop/restart. Explicit sign-out/account switch warns before purging local data.
 - [ ] A transient identity lookup failure does not discard the active shared draft. Confirmed access loss removes household data.
 - [ ] Verify native keyboard, Android Back, close confirmations, large text, and screen-reader labels on the new shared screens.
+- [ ] Open household online, go offline, add/edit/delete several groceries and save a note, force-stop/reopen, reconnect, and verify both phones converge.
+- [ ] Expire the session offline; cached data opens with saved-data labels, replay pauses, and same-user reauthentication resumes it.
+- [ ] Remove/re-invite a member while they have pending edits: identity-level membership changes quarantine them; rejoining does not silently submit rejected work.
+- [ ] Export rejected own edits: no cached server note, conflict copy, other-member record, or token appears.
+- [ ] Inject low-storage/open failures and lost acknowledgements; no optimistic edit appears before durable commit, and retries do not duplicate accepted writes.
+- [ ] Sign out during a delayed database open/write; old callbacks cannot recreate purged data. Test account/project/household isolation.
+- [ ] Use one active browser preview tab per scope; native Android/iOS remain the offline acceptance targets.
 
 | Scenario                                                | Expected result                                                        |
 | ------------------------------------------------------- | ---------------------------------------------------------------------- |

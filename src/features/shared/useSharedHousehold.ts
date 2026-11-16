@@ -1,16 +1,26 @@
+import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
-import { supabase } from '../../lib/supabase';
+import { backendId, supabase } from '../../lib/supabase';
+import { createOfflineStore } from '../offline/engine';
+import { createLazyCacheFactory } from '../offline/lazyCache';
+import { getOfflinePersistence } from '../offline/platformPersistence';
+import type { OfflineDocument } from '../offline/types';
 import { createSharedRepository } from './repository';
-import { createSharedStore } from './store';
 
-export function useSharedHousehold(householdId: string, userId: string) {
+export function useSharedHousehold(
+  householdId: string,
+  userId: string,
+  authReady = true,
+  authToken?: string,
+) {
   const store = useMemo(
     () =>
-      createSharedStore({
+      createOfflineStore({
         householdId,
+        userId,
         repository: createSharedRepository({
           rpc: (name, args) => {
             if (!supabase) throw new Error('Sharing is not connected yet.');
@@ -18,6 +28,14 @@ export function useSharedHousehold(householdId: string, userId: string) {
           },
         }),
         newId: randomUUID,
+        cacheFactory: createLazyCacheFactory<OfflineDocument>(
+          getOfflinePersistence,
+          {
+            backend: backendId,
+            userId,
+            householdId,
+          },
+        ),
       }),
     [householdId, userId],
   );
@@ -29,7 +47,62 @@ export function useSharedHousehold(householdId: string, userId: string) {
 
   useEffect(() => {
     store.activate();
-    if (!supabase) return;
+    let cancelled = false;
+    let hydrated = false;
+    let connected = false;
+    const foreground = () =>
+      AppState.currentState !== 'background' &&
+      AppState.currentState !== 'inactive';
+    const updateNetwork = (network: {
+      isConnected: boolean | null;
+      isInternetReachable: boolean | null;
+    }) => {
+      connected =
+        network.isConnected !== false && network.isInternetReachable !== false;
+      if (!cancelled && hydrated) store.setOnline(connected && foreground());
+    };
+    const unsubscribe = NetInfo.addEventListener(updateNetwork);
+    void store.hydrate().then(() => {
+      if (cancelled) return;
+      hydrated = true;
+      store.setOnline(connected && foreground());
+      void NetInfo.fetch()
+        .then(updateNetwork)
+        .catch(() => {
+          if (!cancelled) store.setOnline(false);
+        });
+    });
+    const timer = setInterval(() => {
+      if (foreground() && connected) void store.actions.refresh();
+    }, 15000);
+    const appState = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        void NetInfo.fetch()
+          .then((network) => {
+            if (cancelled) return;
+            updateNetwork(network);
+            if (connected) void store.actions.refresh();
+          })
+          .catch(() => {
+            if (!cancelled) store.setOnline(false);
+          });
+      } else store.setOnline(false);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      clearInterval(timer);
+      appState.remove();
+      store.dispose();
+    };
+  }, [store]);
+
+  useEffect(() => {
+    void store.setAuthReady(authReady);
+  }, [store, authReady, authToken]);
+
+  useEffect(() => {
+    if (!state.online || !authReady || !supabase) return;
     const client = supabase;
     let cancelled = false;
     let eventTimer: ReturnType<typeof setTimeout> | undefined;
@@ -39,9 +112,6 @@ export function useSharedHousehold(householdId: string, userId: string) {
         if (!cancelled) void store.actions.refresh();
       }, 100);
     };
-    // Fetch immediately, then reconcile again after subscription acknowledgement.
-    // Events are hints to reload authorized snapshots, never trusted record writes.
-    void store.actions.refresh();
     const channel = client
       .channel(`household-${householdId}-${randomUUID()}`)
       .on(
@@ -73,23 +143,33 @@ export function useSharedHousehold(householdId: string, userId: string) {
           store.setConnection('reconnecting');
         else if (status === 'CLOSED') store.setConnection('error');
       });
-    // Periodic reconciliation also detects membership removal, which may stop
-    // authorized Realtime events without sending a final event to that member.
-    const timer = setInterval(() => {
-      if (AppState.currentState === 'active') void store.actions.refresh();
-    }, 15000);
-    const appState = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void store.actions.refresh();
-    });
     return () => {
       cancelled = true;
       clearTimeout(eventTimer);
-      clearInterval(timer);
-      appState.remove();
       void client.removeChannel(channel);
-      store.dispose();
     };
-  }, [store, householdId]);
+  }, [store, householdId, state.online, authReady, authToken]);
+
+  useEffect(() => {
+    if (
+      !state.online ||
+      !authReady ||
+      !state.nextRetryAt ||
+      state.syncStatus === 'reauth'
+    )
+      return;
+    const timer = setTimeout(
+      () => {
+        if (
+          AppState.currentState !== 'background' &&
+          AppState.currentState !== 'inactive'
+        )
+          void store.actions.refresh();
+      },
+      Math.max(0, state.nextRetryAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [store, state.online, state.nextRetryAt, state.syncStatus, authReady]);
 
   return { ...state, ...store.actions };
 }

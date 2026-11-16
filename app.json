@@ -19,6 +19,6 @@
       "name": "Synced Groceries",
       "shortName": "Groceries"
     },
-    "plugins": ["expo-font", "expo-secure-store"]
+    "plugins": ["expo-font", "expo-secure-store", "expo-sqlite"]
   }
 }

@@ -23,6 +23,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme';
+import { backendId } from '../../lib/supabase';
+import { getOfflinePersistence } from '../offline/platformPersistence';
+import { formatRecoveredWork, recoverOwnEdits } from '../offline/recovery';
 import { SharedHouseholdScreen } from '../shared/SharedHouseholdScreen';
 import { useSharedHousehold } from '../shared/useSharedHousehold';
 import { useIdentity } from './useIdentity';
@@ -33,7 +36,7 @@ export function IdentityScreen({ onClose }: { onClose: () => void }) {
   const identity = useIdentity();
   return identity.session && identity.household && identity.householdLoaded ? (
     <HouseholdWorkspace
-      key={`${identity.session.user.id}:${identity.household.id}`}
+      key={`${identity.session.user.id}:${identity.household.id}:${identity.members.find((member) => member.user_id === identity.session!.user.id)?.joined_at ?? ''}`}
       identity={identity}
       onClose={onClose}
     />
@@ -53,6 +56,8 @@ function HouseholdWorkspace({
   const controller = useSharedHousehold(
     household.id,
     identity.session!.user.id,
+    !identity.authRecoveryRequired && !identity.identityOffline,
+    identity.session!.access_token,
   );
   const [open, setOpen] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -80,7 +85,9 @@ function HouseholdWorkspace({
       ) : (
         <IdentityContent
           identity={identity}
-          onClose={() => guardAction(onClose)}
+          onClose={() => {
+            if (!controller.busy) onClose();
+          }}
           guardAccountAction={guardAction}
           onOpenShared={() => setOpen(true)}
         />
@@ -100,11 +107,13 @@ function HouseholdWorkspace({
           }}
         >
           <Card>
-            <Text style={styles.sectionTitle}>Leave unsaved work?</Text>
+            <Text style={styles.sectionTitle}>
+              Remove this account’s saved work?
+            </Text>
             <Text style={styles.body}>
-              Your note draft and any unconfirmed request stay in memory only.
-              Leaving your account screen will discard them. A submitted request
-              may already have reached your household.
+              Signing out or deleting your account removes its saved drafts and
+              queued edits from this phone. Sync or export them first. An edit
+              already accepted by the server will remain in the household.
             </Text>
             <Button
               title="Keep editing"
@@ -203,6 +212,60 @@ function IdentityContent({
               </Card>
             ) : (
               <>
+                {identity.pendingCleanup && (
+                  <Card>
+                    <Text style={styles.sectionTitle}>
+                      Local account cleanup needs a retry
+                    </Text>
+                    <Text style={styles.body}>
+                      Some saved account data could not be removed from this
+                      phone.
+                    </Text>
+                    <Button
+                      title="Retry local cleanup"
+                      onPress={() => void identity.retryCleanup()}
+                    />
+                  </Card>
+                )}
+                {identity.identityOffline && (
+                  <Card>
+                    <Text style={styles.sectionTitle}>
+                      Using your saved household
+                    </Text>
+                    <Text style={styles.body}>
+                      The household details shown here were saved on this phone.
+                      Connect to confirm membership changes and send queued
+                      edits.
+                    </Text>
+                  </Card>
+                )}
+                {identity.authRecoveryRequired && (
+                  <>
+                    <Card>
+                      <Text style={styles.sectionTitle}>
+                        Sign in again to resume syncing
+                      </Text>
+                      <Text style={styles.body}>
+                        Sign in with the same email to resume your saved edits.
+                        Signing into a different account removes this account’s
+                        saved drafts and edits from this phone.
+                      </Text>
+                    </Card>
+                    {identity.session && (
+                      <EmailSignIn
+                        key={`reauth-${identity.session.user.id}`}
+                        identity={identity}
+                      />
+                    )}
+                  </>
+                )}
+                {identity.recoveryHouseholdId && identity.session && (
+                  <RecoveryPanel
+                    key={`${identity.session.user.id}:${identity.recoveryHouseholdId}`}
+                    userId={identity.session.user.id}
+                    householdId={identity.recoveryHouseholdId}
+                  />
+                )}
                 {identity.error && (
                   <View accessibilityRole="alert" style={styles.errorCard}>
                     <Ionicons
@@ -275,6 +338,96 @@ function IdentityContent({
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function RecoveryPanel({
+  userId,
+  householdId,
+}: {
+  userId: string;
+  householdId: string;
+}) {
+  const [work, setWork] = useState<ReturnType<typeof recoverOwnEdits>>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    let close: (() => void) | undefined;
+    void getOfflinePersistence()
+      .then(async (persistence) => {
+        if (cancelled) return;
+        const lease = persistence.open<unknown>({
+          backend: backendId,
+          userId,
+          householdId,
+        });
+        close = () => lease.close();
+        try {
+          const value = recoverOwnEdits(
+            await lease.load(),
+            userId,
+            householdId,
+          );
+          if (!cancelled) {
+            setWork(value);
+            setError(null);
+          }
+        } finally {
+          lease.close();
+        }
+      })
+      .catch(() => {
+        if (!cancelled)
+          setError(
+            'Couldn’t read your saved edits. They have not been changed.',
+          );
+      });
+    return () => {
+      cancelled = true;
+      close?.();
+    };
+  }, [userId, householdId, attempt]);
+  if (!error && (!work || (!work.edits.length && work.noteDraft === null)))
+    return null;
+  return (
+    <Card>
+      <Text style={styles.sectionTitle}>Recover your earlier edits</Text>
+      <Text style={styles.body}>
+        You no longer have this household open. Your own unsent changes are
+        still saved for this account; they will not be sent to a different
+        household.
+      </Text>
+      {error ? (
+        <>
+          <Text accessibilityRole="alert" style={styles.errorText}>
+            {error}
+          </Text>
+          <Button
+            title="Retry reading saved edits"
+            onPress={() => setAttempt((value) => value + 1)}
+          />
+        </>
+      ) : (
+        <>
+          <Text selectable style={styles.caption}>
+            {work && formatRecoveredWork(work)}
+          </Text>
+          <Button
+            title="Export my saved edits"
+            onPress={() => {
+              void Share.share({
+                message: work ? formatRecoveredWork(work) : '',
+              }).catch(() =>
+                setError(
+                  'Couldn’t open sharing. Select the saved text to copy it.',
+                ),
+              );
+            }}
+          />
+        </>
+      )}
+    </Card>
   );
 }
 
