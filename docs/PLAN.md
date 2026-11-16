@@ -61,7 +61,7 @@ Identity, household, membership, invitation, and private invitation-attempt tabl
 | `household_notes`    | ID, household ID, body, updater ID, server timestamp, revision                                               |
 | `applied_operations` | Operation UUID, user ID, result/revision; deduplicates retried writes                                        |
 
-Local-only tables will track the cached records, last reconciliation cursor, and an outbox containing operation UUID, record UUID, intended changes, base revision, and retry state.
+Milestone 3 stores a versioned aggregate per backend/user/household in SQLite: confirmed records, durable intentions/frozen requests, draft/base text, conflicts, and retry metadata. Atomic aggregate writes keep the cache and outbox consistent. Full revision-aware snapshots reconcile tombstones; incremental cursors and compaction are deferred.
 
 Use client-generated UUIDs for new records and operations. Use server-generated timestamps/revisions for ordering accepted updates; device clocks must not determine conflict winners. Add constraints for text lengths, roles, uniqueness, and references in the database as well as in the app.
 
@@ -114,6 +114,8 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ### 3. Reliable offline use
 
+**Status: implemented locally; hosted and two-phone acceptance pending.** SQLite/IndexedDB persist cache, queue, drafts, conflicts, and bounded replay state. Tests cover restart recovery, exact-request retries after lost acknowledgement, session pauses, scope isolation, and membership-loss quarantine. Rejected own edits can be exported. See [offline behaviour and acceptance](OFFLINE.md). The browser preview supports one active tab per account/household; phones remain the primary target.
+
 - Replace the starter snapshot adapter with the SQLite cache/outbox.
 - Queue edits durably, recover them after restart, and retry with bounded backoff.
 - Add network/resume handling, tombstone reconciliation, and pending/failed operation UI.
@@ -141,6 +143,6 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ## Next concrete task
 
-Configure the Supabase development project using [BACKEND.md](BACKEND.md) and [SHARED_BACKEND.md](SHARED_BACKEND.md). Verify email delivery, create/invite/join, live edits, conflicts, and retries on an iPhone and Samsung. Milestones 1 and 2 remain pending that hosted/device acceptance. The next implementation milestone is the SQLite cache and durable outbox, including restart recovery and tombstone reconciliation.
+Configure Supabase using [BACKEND.md](BACKEND.md), apply both migrations, and run the hosted/iPhone/Samsung checks in [TESTING.md](TESTING.md) and [OFFLINE.md](OFFLINE.md). Milestones 1–3 remain pending that acceptance. The next milestone is the household pilot and mobile polish; use [feature branches and focused commits](../CONTRIBUTING.md).
 
 The chosen authentication flow is numeric email OTP. The backend project and region still require configuration. The local preview and SQL tests work without credentials.

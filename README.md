@@ -6,7 +6,7 @@ Built with **Expo, React Native, and TypeScript**. The same app code targets bot
 
 ## Current status
 
-The local preview, **milestone 1 identity/households**, and **milestone 2 online shared groceries/notes** are implemented. Hosted and phone acceptance testing is still pending.
+The local preview, identity/households, shared groceries/notes, and **milestone 3 durable offline cache/replay** are implemented. Hosted and phone acceptance testing is still pending.
 
 - Add groceries with a quantity, mark them bought, remove items, and clear bought items.
 - Write a household note; changes save automatically.
@@ -18,7 +18,7 @@ Open **Household & account** to use email-code sign-in, create or join a househo
 
 After joining a household, open **shared groceries & note** to add/edit groceries, mark them bought, remove them, and save a shared note. Realtime subscriptions and foreground/periodic reconciliation fetch authorized snapshots. Grocery edits use server revisions; independent-field edits can merge, while conflicting note text is preserved for an explicit choice. See the [shared backend setup](docs/SHARED_BACKEND.md) and apply both migrations in order.
 
-**The local preview stays separate** and is never uploaded automatically. Its data persists on the phone. Shared writes require connectivity; an uncertain write can be retried with the same operation ID while the account screen stays open. Shared drafts and pending requests are currently memory-only and do not survive process termination. Durable offline sync is milestone 3. Removing the app or clearing its storage removes local preview data.
+**The local preview stays separate** and is never uploaded automatically. Shared edits/drafts now persist in native SQLite (IndexedDB in the browser preview), survive restart, and replay after reconnecting. Open the household online once before using it offline. Note typing saves a local draft; Save household note queues it for the household. Explicit sign-out/account switching removes that account's local records after a warning. See [offline behaviour and limitations](docs/OFFLINE.md).
 
 Without `.env.local`, the local preview works and household setup explains that sharing is not connected. With valid public Supabase configuration, identity and membership requests go to that project. No hosted project was provisioned or migrated during implementation.
 
@@ -59,7 +59,7 @@ The browser preview does not replace testing on actual phones.
 ## Checks
 
 ```sh
-npm run check     # TypeScript, unit + PostgreSQL access-control tests, formatting
+npm run check     # TypeScript, unit + SQLite + PostgreSQL tests, formatting
 npm run test:db   # Actual migration and RLS tests; no Docker/cloud needed
 npm run build     # Export JS and assets for Android, iOS, and web
 ```
@@ -102,13 +102,17 @@ src/features/household/
   state.test.ts                 Domain and stored-data tests
 src/features/identity/          Email-code sign-in, household UI, hook and RPC service
 src/features/shared/            Shared groceries/note UI, repository, revision-aware store
+src/features/offline/           SQLite/IndexedDB storage, durable outbox, recovery and replay tests
 src/lib/                        Backend configuration and secure session storage
 supabase/migrations/            Transactional household schema, RPCs, RLS, grants
 tests/database/                 PostgreSQL access-control and invitation tests
 docs/BACKEND.md                 Hosted project setup, API contract, security boundaries
 docs/SHARED_BACKEND.md          Shared-data migrations, Realtime setup and retry rules
+docs/OFFLINE.md                 Offline behaviour, recovery and device acceptance
 docs/PLAN.md                    Scope, architecture, milestones, acceptance criteria
 docs/TESTING.md                 Phone testing and future sync scenarios
 ```
 
-Keep domain rules separate from the UI. Identity screens use a hook and service layer rather than calling backend APIs directly. Native sessions use encrypted SecureStore, split into small committed generations to support large sessions; the browser preview uses tab-scoped sessionStorage. No plaintext AsyncStorage fallback is used for authentication. An HTTP endpoint is accepted only on loopback for local development; hosted endpoints must use HTTPS. The starter's grocery snapshot storage still needs a transactional cache and operation queue before promising reliable offline sync.
+Keep domain rules separate from the UI. Native sessions use encrypted SecureStore; browser sessions are tab-scoped. Shared records/outbox are scoped to backend, user, and household. Auth never falls back to plaintext AsyncStorage. HTTP is accepted only on loopback for local development; hosted endpoints need HTTPS. Use one active browser tab per household; phones remain the primary target.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for feature branches and focused commits. Milestone 3 is stacked on milestone 2; neither has been merged into `master`.
