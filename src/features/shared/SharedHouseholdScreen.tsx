@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme';
+import { describeOwnChanges } from '../offline/recovery';
 import type { SharedItem } from './types';
 import type { SharedController } from './useSharedHousehold';
 
@@ -39,15 +40,35 @@ export function SharedHouseholdScreen({
 }: Props) {
   const [tab, setTab] = useState<'groceries' | 'note'>('groceries');
   const [confirmClose, setConfirmClose] = useState(false);
+  const [noteInput, setNoteInput] = useState(controller.noteDraft);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftSaveFailed, setDraftSaveFailed] = useState(false);
+  const draftWrites = useRef(0);
+  const draftVersion = useRef(0);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const { snapshot } = controller;
-  const dirtyNote =
-    snapshot !== null && controller.noteDraft !== snapshot.note.body;
-  const blocked = controller.busy || controller.pending;
+  const dirtyNote = snapshot !== null && noteInput !== snapshot.note.body;
+  const blocked = controller.busy || controller.storageError !== null;
+
+  useEffect(() => {
+    if (draftWrites.current === 0 && !draftSaveFailed)
+      setNoteInput(controller.noteDraft);
+  }, [controller.noteDraft, savingDraft, draftSaveFailed]);
+
+  async function changeDraft(body: string) {
+    const version = ++draftVersion.current;
+    draftWrites.current++;
+    setNoteInput(body);
+    setSavingDraft(true);
+    const saved = await controller.updateNoteDraft(body);
+    draftWrites.current--;
+    if (version === draftVersion.current) setDraftSaveFailed(!saved);
+    if (draftWrites.current === 0) setSavingDraft(false);
+  }
 
   function close() {
     if (controller.busy) return;
-    if (dirtyNote || controller.pending) {
+    if (draftSaveFailed || savingDraft) {
       setConfirmClose(true);
       scroll.current?.scrollTo({ y: 0, animated: true });
     } else onClose();
@@ -70,7 +91,7 @@ export function SharedHouseholdScreen({
       return true;
     });
     return () => listener.remove();
-  }, [controller.busy, controller.pending, dirtyNote, onClose]);
+  }, [controller.busy, draftSaveFailed, savingDraft, onClose]);
 
   function attribution(userId: string | null, timestamp: string) {
     const name =
@@ -93,6 +114,15 @@ export function SharedHouseholdScreen({
     reconnecting: 'Reconnecting live updates…',
     error: 'Live updates unavailable',
   }[controller.connection];
+  const syncLabel = {
+    offline: 'Offline · changes stay saved on this phone',
+    pending: 'Changes saved on this phone · waiting to sync',
+    syncing: 'Syncing with your household…',
+    synced: 'All queued changes acknowledged by your household',
+    failed: 'Some edits need your attention',
+    reauth:
+      'Reconnect or sign in to confirm your account · saved edits are kept',
+  }[controller.syncStatus];
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -140,9 +170,8 @@ export function SharedHouseholdScreen({
                   Leave this shared list?
                 </Text>
                 <Text style={styles.body}>
-                  {controller.pending
-                    ? 'An edit still needs confirmation. Keep the app open and retry so it can reach your household.'
-                    : 'Your note has unsaved changes. Save it before leaving to make it visible to your flatmates.'}
+                  Your latest note text has not been saved on this phone. Retry
+                  saving it before leaving, or discard that local text.
                 </Text>
                 <Button
                   title="Stay here"
@@ -172,9 +201,10 @@ export function SharedHouseholdScreen({
                 />
               )}
               <Text style={styles.caption}>
-                {controller.busy ? 'Submitting changes…' : connectionLabel}
+                {controller.busy ? 'Saving on this phone…' : syncLabel}
               </Text>
             </View>
+            <Text style={styles.caption}>{connectionLabel}</Text>
 
             {controller.error && (
               <View accessibilityRole="alert" style={styles.errorCard}>
@@ -184,17 +214,59 @@ export function SharedHouseholdScreen({
             {controller.pending && (
               <Card tone="note">
                 <Text style={styles.sectionTitle}>
-                  An edit needs confirmation.
+                  {controller.queuedCount} saved changes ·{' '}
+                  {controller.failedCount} need attention
                 </Text>
                 <Text style={styles.body}>
-                  Retry before making more changes. Keep the app open; this
-                  retry is held only for the current session.
+                  These edits are saved on this phone and survive an app
+                  restart. You can keep editing offline. Sync resumes when your
+                  connection and sign-in are ready.
                 </Text>
                 <Button
-                  title={controller.busy ? 'Retrying…' : 'Retry this edit'}
+                  title={controller.busy ? 'Saving…' : 'Retry syncing'}
                   disabled={controller.busy}
                   onPress={() => void controller.retry()}
                 />
+              </Card>
+            )}
+            {controller.storageError && (
+              <Card tone="note">
+                <Text style={styles.sectionTitle}>
+                  Couldn’t save on this phone
+                </Text>
+                <Text style={styles.body}>
+                  {controller.storageError} Your last confirmed local data has
+                  been kept.
+                </Text>
+                <Button
+                  title="Retry local storage"
+                  disabled={controller.busy}
+                  onPress={() => void controller.retry()}
+                />
+              </Card>
+            )}
+            {controller.syncStatus === 'reauth' && (
+              <Button title="Return to account to sign in" onPress={onClose} />
+            )}
+            {controller.failedDetails.length > 0 && (
+              <Card tone="note">
+                <Text style={styles.sectionTitle}>
+                  Your saved edits need review
+                </Text>
+                {controller.failedDetails.map((edit) => (
+                  <View key={edit.id}>
+                    <Text style={styles.body}>{edit.message}</Text>
+                    <Text selectable style={styles.caption}>
+                      {edit.body ?? describeOwnChanges(edit.changes ?? {})}
+                    </Text>
+                    <Button
+                      title="Discard this rejected edit"
+                      secondary
+                      disabled={controller.busy}
+                      onPress={() => void controller.discardFailed(edit.id)}
+                    />
+                  </View>
+                ))}
               </Card>
             )}
 
@@ -209,9 +281,9 @@ export function SharedHouseholdScreen({
                     : `Latest version: ${controller.itemConflict.title} · ${controller.itemConflict.quantity}${controller.itemConflict.completed ? ' · bought' : ''}. Review the item and edit it again if needed.`}
                 </Text>
                 <Button
-                  title="Got it"
+                  title="Discard the conflicting edit and use latest"
                   secondary
-                  onPress={controller.dismissItemConflict}
+                  onPress={() => void controller.dismissItemConflict()}
                 />
               </Card>
             )}
@@ -328,25 +400,29 @@ export function SharedHouseholdScreen({
                         multiline
                         textAlignVertical="top"
                         maxLength={2000}
-                        editable={!blocked}
-                        value={controller.noteDraft}
-                        onChangeText={controller.updateNoteDraft}
+                        editable={controller.storageError === null}
+                        value={noteInput}
+                        onChangeText={(body) => void changeDraft(body)}
                         style={styles.noteInput}
                         placeholder="Favourite brands, kitchen reminders, dinner plans…"
                         placeholderTextColor={colors.muted}
                       />
                       <View style={styles.sectionHeading}>
                         <Text style={styles.caption}>
-                          {dirtyNote
-                            ? 'Unsaved changes'
-                            : 'Matches the shared note'}
+                          {savingDraft
+                            ? 'Saving draft on this phone…'
+                            : draftSaveFailed
+                              ? 'Latest text is not saved'
+                              : dirtyNote
+                                ? 'Draft saved on this phone · not shared yet'
+                                : 'Saved on this phone · check sync status above'}
                         </Text>
                         <Text style={styles.caption}>
-                          {controller.noteDraft.length} / 2000
+                          {noteInput.length} / 2000
                         </Text>
                       </View>
                       <Text style={styles.caption}>
-                        Last saved:{' '}
+                        Latest visible edit:{' '}
                         {attribution(
                           snapshot.note.updated_by,
                           snapshot.note.updated_at,
@@ -358,11 +434,20 @@ export function SharedHouseholdScreen({
                         }
                         disabled={
                           blocked ||
+                          savingDraft ||
+                          draftSaveFailed ||
                           !dirtyNote ||
                           controller.noteConflict !== null
                         }
                         onPress={() => void controller.saveNote()}
                       />
+                      {draftSaveFailed && (
+                        <Button
+                          title="Retry saving my draft locally"
+                          disabled={savingDraft}
+                          onPress={() => void changeDraft(noteInput)}
+                        />
+                      )}
                     </Card>
 
                     {controller.noteConflict && (
@@ -390,14 +475,17 @@ export function SharedHouseholdScreen({
                           )}
                         </Text>
                         <Button
-                          title="Use the shared version"
+                          title="Use shared version and discard my queued note edits"
                           secondary
                           disabled={blocked}
-                          onPress={controller.useServerNote}
+                          onPress={() => {
+                            setDraftSaveFailed(false);
+                            void controller.useServerNote();
+                          }}
                         />
                         <Button
-                          title="Save my draft instead"
-                          disabled={blocked}
+                          title="Save my draft for the household"
+                          disabled={blocked || savingDraft || draftSaveFailed}
                           onPress={() => void controller.keepMyNote()}
                         />
                       </Card>
@@ -414,9 +502,9 @@ export function SharedHouseholdScreen({
               onPress={() => void controller.refresh()}
             />
             <Text style={styles.footer}>
-              Changes need a connection to reach your household. Reliable
-              offline saving is coming next. Your local preview list stays
-              separate.
+              Drafts and queued edits are saved on this phone. They reach your
+              household after reconnecting. Explicit sign-out removes this
+              account’s local cache. Your local preview remains separate.
             </Text>
           </View>
         </ScrollView>
@@ -434,15 +522,15 @@ function AddForm({
 }) {
   const [title, setTitle] = useState('');
   const [quantity, setQuantity] = useState('');
-  function submit() {
+  async function submit() {
     if (disabled || !title.trim()) return;
     const itemTitle = title.trim();
     const itemQuantity = quantity.trim() || '1';
-    // A failed request is retained by the controller for retry; leaving the form
-    // filled would encourage a duplicate add after an acknowledged retry.
-    setTitle('');
-    setQuantity('');
-    void onAdd(itemTitle, itemQuantity);
+    // Clear only after the item and its outbox entry are durably committed.
+    if (await onAdd(itemTitle, itemQuantity)) {
+      setTitle('');
+      setQuantity('');
+    }
   }
   return (
     <Card>
