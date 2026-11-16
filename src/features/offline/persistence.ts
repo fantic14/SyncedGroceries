@@ -13,8 +13,20 @@ export type ScopeCache<T> = {
 
 export type OfflinePersistence = {
   open<T>(scope: CacheScope): ScopeCache<T>;
+  invalidateScope(scope: CacheScope): void;
   clearUser(backend: string, userId: string): Promise<void>;
 };
+
+// Also fence leases whose asynchronous database provider has not resolved yet.
+// Instance-local lease sets alone cannot see those delayed opens at sign-out.
+const userGenerations = new Map<string, number>();
+const scopeGenerations = new Map<string, number>();
+export function scopeCacheGeneration(scope: CacheScope): number {
+  return scopeGenerations.get(cacheScopeKey(scope)) ?? 0;
+}
+export function userCacheGeneration(backend: string, userId: string): number {
+  return userGenerations.get(JSON.stringify([backend, userId])) ?? 0;
+}
 
 export type DocumentBackend = {
   read(scopeKey: string): Promise<string | null>;
@@ -78,6 +90,17 @@ export function createDocumentPersistence(
   }
 
   return {
+    invalidateScope(input) {
+      const scope = checkedScope(input);
+      const key = cacheScopeKey(scope);
+      scopeGenerations.set(key, scopeCacheGeneration(scope) + 1);
+      for (const lease of leases) {
+        if (cacheScopeKey(lease.scope) === key) {
+          lease.active = false;
+          leases.delete(lease);
+        }
+      }
+    },
     open<T>(input: CacheScope): ScopeCache<T> {
       const scope = checkedScope(input);
       const key = cacheScopeKey(scope);
@@ -138,6 +161,10 @@ export function createDocumentPersistence(
       };
     },
     clearUser: (backendId, userId) => {
+      userGenerations.set(
+        JSON.stringify([backendId, userId]),
+        userCacheGeneration(backendId, userId) + 1,
+      );
       // Invalidate first, before any await. Old queued writes and late network
       // responses cannot recreate this account's data after the ordered purge.
       for (const lease of leases) {
