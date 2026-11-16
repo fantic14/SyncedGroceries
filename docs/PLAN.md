@@ -143,6 +143,6 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ## Next concrete task
 
-Configure Supabase using [BACKEND.md](BACKEND.md), apply both migrations, and run the hosted/iPhone/Samsung checks in [TESTING.md](TESTING.md) and [OFFLINE.md](OFFLINE.md). Milestones 1–3 remain pending that acceptance. The next milestone is the household pilot and mobile polish; use [feature branches and focused commits](../CONTRIBUTING.md).
+Milestones 2 and 3 are merged. Configure Supabase and produce the first standalone Samsung APK using [ANDROID_TESTING_SETUP.md](ANDROID_TESTING_SETUP.md), then run the hosted/phone checks in [TESTING.md](TESTING.md) and [OFFLINE.md](OFFLINE.md). Android is the first acceptance target, followed by iPhone signing and testing. Milestones 1–3 remain pending that acceptance. The next milestone is the household pilot and mobile polish; use [feature branches and focused commits](../CONTRIBUTING.md).
 
 The chosen authentication flow is numeric email OTP. The backend project and region still require configuration. The local preview and SQL tests work without credentials.

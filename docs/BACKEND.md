@@ -4,6 +4,8 @@ Milestone 1 adds the database boundary for accounts and households. Milestone 2 
 
 ## Connect a development project
 
+For account creation through a standalone Android installer, use the [first Android testing walkthrough](ANDROID_TESTING_SETUP.md). It includes the email template, read-only hosted verification, and Expo setup.
+
 1. Create a Supabase development project in the appropriate region for the household. Keep production and development projects separate.
 2. Apply `supabase/migrations/202611160001_household_identity.sql`, then `202611160002_shared_groceries.sql`, as the database owner. The migrations are transactional and expect Supabase's existing `auth.users`, `auth.uid()`, `anon`, and `authenticated` objects. Apply each exactly once.
 3. Enable email authentication. Configure the **Magic Link email template** to show `{{ .Token }}` so users can enter the email code in the app. This implementation uses email OTP verification rather than a browser redirect, so it does not require a magic-link callback/deep link.
@@ -12,17 +14,16 @@ Milestone 1 adds the database boundary for accounts and households. Milestone 2 
 
 Configure email delivery/SMTP and provider rate limits for your intended test recipients. The app expects a numeric OTP in the email, not a clickable magic-link-only template. See Supabase's [email OTP guide](https://supabase.com/docs/guides/auth/auth-email-passwordless).
 
-For version-tracked CLI deployment, initialise local Supabase CLI configuration if needed, authenticate, link the development project, review the migration, and push it:
+For version-tracked CLI deployment, use the pinned CLI and tracked local configuration. Authenticate, link the development project, review the migrations, and push explicitly to the remote target (CLI 3 defaults to local):
 
 ```sh
-npx supabase@latest init
-npx supabase@latest login
-npx supabase@latest link --project-ref YOUR_DEVELOPMENT_PROJECT_REF
-npx supabase@latest db push --dry-run
-npx supabase@latest db push
+npm run supabase -- login
+npm run supabase -- link --project-ref YOUR_DEVELOPMENT_PROJECT_REF
+npm run supabase -- db push --remote --dry-run
+npm run supabase -- db push --remote
 ```
 
-The SQL editor can apply the file directly for initial evaluation, but use a single migration workflow thereafter so CLI migration history matches deployed state. Do not apply the same initial migration twice. Do not put database passwords or Auth administrator credentials into Expo variables.
+Use a single migration workflow so CLI migration history matches deployed state; do not manually apply these files in SQL Editor and then push them again. Run [verify.sql](../supabase/verify.sql) in SQL Editor after deployment for read-only table/RLS, RPC-grant, and Realtime checks. The tracked local `config.toml` does not configure hosted Auth or SMTP when migrations are pushed. Do not put database passwords or Auth administrator credentials into Expo variables.
 
 Supabase's [Expo guide](https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native), [row-level security guide](https://supabase.com/docs/guides/database/postgres/row-level-security), and [database-function guidance](https://supabase.com/docs/guides/database/functions) describe the underlying integration and privileges.
 
