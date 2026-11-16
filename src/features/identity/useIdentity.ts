@@ -60,8 +60,12 @@ export function useIdentity() {
       }
     } catch (cause) {
       if (mounted.current && request.current === attempt) {
-        setSnapshot(empty);
-        setHouseholdLoaded(false);
+        // A transient lookup failure must not unmount an active household and
+        // discard its in-memory note draft. Confirmed permission loss is different.
+        if ((cause as { code?: string } | null)?.code === '42501') {
+          setSnapshot(empty);
+          setHouseholdLoaded(false);
+        }
         setError(identityError(cause));
       }
     } finally {

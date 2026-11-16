@@ -54,9 +54,19 @@ Run on an iPhone and a Samsung Galaxy phone, plus the browser preview for a quic
 
 Saving is debounced by 300 ms. Abrupt process termination before storage acknowledges a write can lose that last edit; wait for saved status when testing persistence. Durable transactional offline writes belong to milestone 3.
 
-## Connected MVP: scenarios to add
+## Connected MVP: hosted/device acceptance
 
-These are future acceptance tests; the local starter cannot pass them yet.
+Milestone 2 provides the online shared UI and backend implementation. Run these checks against a configured project and actual phones; local unit/PostgreSQL tests do not establish live Realtime delivery. Durable offline/restart scenarios still require milestone 3.
+
+- [ ] Apply both migrations and verify shared tables are enabled in the Realtime publication.
+- [ ] Use the shared screen on both devices; a new household starts with an empty shared list/note, not local preview examples.
+- [ ] Edit a grocery's quantity on one device and title on the other; independent fields merge without a whole-record overwrite.
+- [ ] Concurrent same-field grocery edits show a conflict and retain the edit form for review.
+- [ ] Concurrent note changes show both the latest server text and the local draft. “Keep mine” uses the latest revision and can conflict again safely.
+- [ ] Drop a write response after the server commits; retry uses the same operation ID and does not duplicate or reverse the edit.
+- [ ] Returning to household settings preserves the in-memory draft; leaving the account screen or signing out warns before discarding it.
+- [ ] A transient identity lookup failure does not discard the active shared draft. Confirmed access loss removes household data.
+- [ ] Verify native keyboard, Android Back, close confirmations, large text, and screen-reader labels on the new shared screens.
 
 | Scenario                                                | Expected result                                                        |
 | ------------------------------------------------------- | ---------------------------------------------------------------------- |

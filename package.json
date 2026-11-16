@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:db",
-    "test:unit": "node --test --test-isolation=none src/features/household/*.test.ts src/features/identity/*.test.ts src/lib/*.test.ts",
+    "test:unit": "node --test --test-isolation=none src/features/household/*.test.ts src/features/identity/*.test.ts src/features/shared/*.test.ts src/lib/*.test.ts",
     "test:db": "node --test --test-isolation=none tests/database/*.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
