@@ -1,0 +1,28 @@
+# Dependencies and generated output
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+android/
+ios/
+out-tsc/
+tmp/
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Logs and editor state
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/
+.idea/

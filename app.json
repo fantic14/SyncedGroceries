@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Synced Groceries",
+    "slug": "synced-groceries",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "syncedgroceries",
+    "backgroundColor": "#F6F7F2",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.syncedgroceries.app"
+    },
+    "android": {
+      "package": "com.syncedgroceries.app",
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "web": {
+      "name": "Synced Groceries",
+      "shortName": "Groceries"
+    },
+    "plugins": ["expo-font"]
+  }
+}
