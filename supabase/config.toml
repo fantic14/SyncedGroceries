@@ -55,8 +55,8 @@ otp_expiry = 3600
 
 [auth.email.template.magic_link]
 subject = "Your Synced Groceries sign-in code"
-content_path = "./templates/magic-link.html"
+content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.confirmation]
 subject = "Your Synced Groceries sign-in code"
-content_path = "./templates/magic-link.html"
+content_path = "./supabase/templates/magic-link.html"

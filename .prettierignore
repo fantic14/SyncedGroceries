@@ -7,3 +7,5 @@ android/
 ios/
 package-lock.json
 .idea/
+supabase/.temp/
+supabase/.branches/
