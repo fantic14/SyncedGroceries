@@ -1,6 +1,6 @@
 # Shared groceries and notes backend
 
-Milestone 2 adds the shared online data boundary on top of the identity schema. Apply `supabase/migrations/202611160002_shared_groceries.sql` after the identity migration, using the same reviewed development-project migration workflow described in [BACKEND.md](BACKEND.md). Neither migration has been applied to a hosted project by this implementation.
+Milestone 2 adds the shared online data boundary on top of the identity schema. For a new project, apply `supabase/migrations/202611160002_shared_groceries.sql` after the identity migration, using the reviewed migration workflow described in [BACKEND.md](BACKEND.md). Both migrations are already applied to the development project in [DEPLOYMENT.md](DEPLOYMENT.md); do not reapply them manually.
 
 ## Records and access
 

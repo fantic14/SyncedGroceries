@@ -2,7 +2,7 @@
 
 This walkthrough connects a Supabase development project and builds a standalone Android preview APK through Expo. The installed APK contains the app code, connects directly to Supabase, and runs with the development PC switched off. Its SQLite cache and queued edits stay on the phone.
 
-Repository preparation does not create either cloud project, deploy migrations, send emails, or produce an APK. Those steps need the accounts below. Keep passwords and private tokens in the provider dashboards or terminal login prompts.
+These instructions describe setup for a new environment. The current development project's deployment and build evidence are recorded in [DEPLOYMENT.md](DEPLOYMENT.md); its migrations must not be reapplied manually. Keep passwords and private tokens in the provider dashboards or terminal login prompts.
 
 ## 1. Create the accounts and Supabase project
 
@@ -148,13 +148,13 @@ An export from `npm run build` is a bundling check, not an APK. Record the actua
 
 Continue with the full [device checklist](TESTING.md) and [offline checklist](OFFLINE.md). Record failures with device model/OS and the triggering actions; do not include tokens or email codes in reports.
 
-| Acceptance evidence                                  | Current result                        |
-| ---------------------------------------------------- | ------------------------------------- |
-| Hosted migrations and catalog verification           | Pending account/project configuration |
-| Email delivery and first/returning sign-in           | Pending                               |
-| Expo project link and preview variables              | Pending                               |
-| Successful cloud build URL and tested Git revision   | Pending                               |
-| Samsung model, Android/One UI versions, installation | Pending                               |
-| Online sync and offline restart/replay               | Pending                               |
+| Acceptance evidence                                  | Current result                                 |
+| ---------------------------------------------------- | ---------------------------------------------- |
+| Hosted migrations and catalog verification           | Passed; see [deployment record](DEPLOYMENT.md) |
+| Email delivery and first/returning sign-in           | Pending                                        |
+| Expo project link and preview variables              | Configured for `@fantic14/synced-groceries`    |
+| Successful cloud build URL and tested Git revision   | See [deployment record](DEPLOYMENT.md)         |
+| Samsung model, Android/One UI versions, installation | Pending                                        |
+| Online sync and offline restart/replay               | Pending                                        |
 
 References: [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Supabase migrations](https://supabase.com/docs/guides/local-development/database-migrations), [Expo build setup](https://docs.expo.dev/build/setup/).

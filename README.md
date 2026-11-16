@@ -6,7 +6,7 @@ Built with **Expo, React Native, and TypeScript**. The same app code targets bot
 
 ## Current status
 
-The local preview, identity/households, shared groceries/notes, and **milestone 3 durable offline cache/replay** are implemented. Hosted and phone acceptance testing is still pending.
+The local preview, identity/households, shared groceries/notes, and **milestone 3 durable offline cache/replay** are implemented. The Supabase development schema is deployed, and the first signed Android preview APK has built successfully. Signed-in flows and phone acceptance testing are still pending; see the [deployment record and installer](docs/DEPLOYMENT.md).
 
 - Add groceries with a quantity, mark them bought, remove items, and clear bought items.
 - Write a household note; changes save automatically.
@@ -20,7 +20,7 @@ After joining a household, open **shared groceries & note** to add/edit grocerie
 
 **The local preview stays separate** and is never uploaded automatically. Shared edits/drafts now persist in native SQLite (IndexedDB in the browser preview), survive restart, and replay after reconnecting. Open the household online once before using it offline. Note typing saves a local draft; Save household note queues it for the household. Explicit sign-out/account switching removes that account's local records after a warning. See [offline behaviour and limitations](docs/OFFLINE.md).
 
-Without `.env.local`, the local preview works and household setup explains that sharing is not connected. With valid public Supabase configuration, identity and membership requests go to that project. No hosted project was provisioned or migrated during implementation.
+Without `.env.local`, the local preview works and household setup explains that sharing is not connected. With valid public Supabase configuration, identity and membership requests go to that project. The development project has both migrations applied; public configuration remains outside Git and is set separately in Expo's preview environment.
 
 ## Run locally
 
@@ -88,7 +88,7 @@ npx eas-cli@latest build --profile development --platform ios
 npx eas-cli@latest build --profile preview --platform android
 ```
 
-No hosted Expo/Supabase project, signing credentials, or store listing has been created. See the official [Expo build guide](https://docs.expo.dev/build/introduction/) for distribution details. Rebuild native development clients after adding native modules such as SecureStore; an older installed development client will not include them.
+The development Supabase and Expo projects are linked, with an Android signing keystore managed by Expo. No store listing or iOS signing setup has been created. See the [deployment record](docs/DEPLOYMENT.md) and official [Expo build guide](https://docs.expo.dev/build/introduction/) for distribution details. Rebuild native development clients after adding native modules such as SecureStore; an older installed development client will not include them.
 
 ## Project layout
 

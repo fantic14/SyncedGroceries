@@ -1,6 +1,6 @@
 # Identity and household backend
 
-Milestone 1 adds the database boundary for accounts and households. Milestone 2 adds a separate online shared list/note described in [SHARED_BACKEND.md](SHARED_BACKEND.md); the original local preview remains independent. This repository does not include a deployed Supabase project or credentials.
+Milestone 1 adds the database boundary for accounts and households. Milestone 2 adds a separate online shared list/note described in [SHARED_BACKEND.md](SHARED_BACKEND.md); the original local preview remains independent. Both migrations are deployed to the development project recorded in [DEPLOYMENT.md](DEPLOYMENT.md). Credentials remain outside Git.
 
 ## Connect a development project
 

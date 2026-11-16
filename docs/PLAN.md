@@ -42,13 +42,13 @@ Defer expense splitting, payments, receipts, barcode scanning, push notification
 | Connected offline storage | SQLite cache and durable operation outbox                                | Atomically save an edit and its pending operation, recover safely after termination        |
 | Distribution              | Expo development/preview builds, then TestFlight and Google Play testing | Test native behaviour before store release                                                 |
 
-Supabase is now the implemented identity/household backend dependency. The schema and client flow are ready for a development project; no hosted project or email service is configured in this workspace. Its Realtime service is not an offline synchronization engine: reconnection, caching, conflict handling, and durable retries must be built explicitly. The local grocery hook/reducer are intentionally small; they are not that sync engine.
+Supabase is the implemented identity/household backend dependency. Both migrations are deployed to a development project, and the owner has configured email templates/SMTP; delivery and signed-in phone flows still need acceptance testing. See [DEPLOYMENT.md](DEPLOYMENT.md). Realtime supplies live invalidation signals, while milestone 3 provides client caching, conflict handling, and durable retries.
 
 References: [Expo project setup](https://docs.expo.dev/get-started/create-a-project/), [Supabase's Expo integration](https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native), [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security), [Expo builds](https://docs.expo.dev/build/introduction/).
 
 ## Planned cloud data model
 
-Identity, household, membership, invitation, and private invitation-attempt tables are implemented in the [initial migration](../supabase/migrations/202611160001_household_identity.sql). Shared lists, items, notes, and private applied operations are implemented in the [second migration](../supabase/migrations/202611160002_shared_groceries.sql). Local SQLite cache/outbox tables remain planned.
+Identity, household, membership, invitation, and private invitation-attempt tables are implemented in the [initial migration](../supabase/migrations/202611160001_household_identity.sql). Shared lists, items, notes, and private applied operations are implemented in the [second migration](../supabase/migrations/202611160002_shared_groceries.sql). Local SQLite cache/outbox aggregates are implemented in milestone 3.
 
 | Entity               | Core fields                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -143,6 +143,6 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ## Next concrete task
 
-Milestones 2 and 3 are merged. Configure Supabase and produce the first standalone Samsung APK using [ANDROID_TESTING_SETUP.md](ANDROID_TESTING_SETUP.md), then run the hosted/phone checks in [TESTING.md](TESTING.md) and [OFFLINE.md](OFFLINE.md). Android is the first acceptance target, followed by iPhone signing and testing. Milestones 1–3 remain pending that acceptance. The next milestone is the household pilot and mobile polish; use [feature branches and focused commits](../CONTRIBUTING.md).
+Milestones 2 and 3 are merged. Supabase is deployed and Expo is linked for a standalone Samsung APK; see [DEPLOYMENT.md](DEPLOYMENT.md) for build evidence. Install the Android preview and run the signed-in/phone checks in [TESTING.md](TESTING.md) and [OFFLINE.md](OFFLINE.md). Android is the first acceptance target, followed by iPhone signing and testing. Milestones 1–3 remain pending that acceptance. The next milestone is the household pilot and mobile polish; use [feature branches and focused commits](../CONTRIBUTING.md).
 
-The chosen authentication flow is numeric email OTP. The backend project and region still require configuration. The local preview and SQL tests work without credentials.
+The chosen authentication flow is numeric email OTP. The development backend is hosted in `eu-west-1`; email delivery remains a first-device acceptance check. The local preview and SQL tests work without credentials.
