@@ -19,6 +19,12 @@
       "name": "Synced Groceries",
       "shortName": "Groceries"
     },
-    "plugins": ["expo-font", "expo-secure-store", "expo-sqlite"]
+    "plugins": ["expo-font", "expo-secure-store", "expo-sqlite"],
+    "extra": {
+      "eas": {
+        "projectId": "ee0c40a0-0bc8-4ec8-98fb-f7b54381c1c8"
+      }
+    },
+    "owner": "fantic14"
   }
 }
