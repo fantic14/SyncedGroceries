@@ -8,7 +8,29 @@ npm run check
 npm run build
 ```
 
-The tests cover stored-data validation, empty-list preservation, item-input normalization, duplicate-ID handling, and shopping operations preserving the household note. Type checking and Metro export catch integration/bundling issues. These checks do not establish native runtime compatibility or remote sync correctness.
+Unit tests cover stored-data validation, empty-list preservation, shopping actions, auth input/error handling, public-only backend configuration, and chunked secure-session persistence under partial failure and concurrent writes/logout. Database tests run the actual migration in embedded PostgreSQL with real authenticated/anonymous role changes, covering household isolation and the invitation/membership boundary. Type checking and Metro export catch integration/bundling issues. These checks do not establish native runtime compatibility, hosted Auth/PostgREST behavior, or remote sync correctness.
+
+## Identity/household: hosted acceptance checks
+
+Follow [backend setup](BACKEND.md). These are required before marking milestone 1 complete; no hosted project or phone run is implied by passing the SQL tests.
+
+- [ ] No environment configuration: grocery preview opens and Household & account explains sharing is not connected.
+- [ ] Configure a development project, apply the migration, and set the email template to `{{ .Token }}`.
+- [ ] Request a code, enter an invalid/expired code, resend after cooldown, then sign in successfully.
+- [ ] Close/reopen on both phones: encrypted native session restores; background/resume refresh works.
+- [ ] Create household on one account, generate an invite, and join with a different account/OS.
+- [ ] The generated token remains visible after a successful refresh or returning from the share sheet.
+- [ ] If a refresh fails after issuing an invite, retrying restores the code for the same user/household; sign-out or ownership loss clears it.
+- [ ] Android Back returns from household setup to the preview; closing is disabled while an account/membership change is in progress.
+- [ ] Reusing, revoking, or expiring a token prevents another join. Excess attempts show a rejection.
+- [ ] Owners can remove members and transfer ownership; regular members cannot invoke those operations directly.
+- [ ] Owner cannot leave/delete account while other members remain until ownership is transferred.
+- [ ] Sign out or switch account during a slow request: old membership/invite results never appear for the new user.
+- [ ] Failed membership load shows retry, rather than incorrectly offering a new household as if none exists.
+- [ ] Leaving/removal revokes household reads; refresh discards stale membership.
+- [ ] Confirmed account deletion affects only that account; an old JWT cannot mutate household state afterwards.
+- [ ] Local preview data stays separate and is not uploaded or presented as the signed-in household's shared list.
+- [ ] Navigating to household setup while a local edit is saving does not cancel that edit.
 
 ## Local starter: manual checks
 
@@ -28,7 +50,7 @@ Run on an iPhone and a Samsung Galaxy phone, plus the browser preview for a quic
 - [ ] Small screens and large system text do not hide the add button or delete controls.
 - [ ] VoiceOver/TalkBack announces labels, checkbox state, tabs, and save status.
 - [ ] Touch targets work comfortably with one thumb.
-- [ ] The UI clearly says changes stay on the current phone; there is no false “synced” status.
+- [ ] The grocery preview clearly says changes stay on the current phone; there is no false “synced” status.
 
 Saving is debounced by 300 ms. Abrupt process termination before storage acknowledges a write can lose that last edit; wait for saved status when testing persistence. Durable transactional offline writes belong to milestone 3.
 

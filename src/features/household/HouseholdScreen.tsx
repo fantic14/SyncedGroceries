@@ -24,7 +24,11 @@ import { useHousehold } from './useHousehold';
 
 type Tab = 'groceries' | 'notes';
 
-export function HouseholdScreen() {
+export function HouseholdScreen({
+  onOpenIdentity,
+}: {
+  onOpenIdentity: () => void;
+}) {
   const household = useHousehold();
   const [tab, setTab] = useState<Tab>('groceries');
   const { state } = household;
@@ -90,9 +94,14 @@ export function HouseholdScreen() {
                 </View>
                 <Text style={styles.brandName}>synced groceries</Text>
               </View>
-              <View style={styles.homeMark}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Household and account"
+                onPress={onOpenIdentity}
+                style={styles.homeMark}
+              >
                 <Ionicons name="home-outline" size={21} color={colors.green} />
-              </View>
+              </Pressable>
             </View>
 
             <View style={styles.hero}>
@@ -266,11 +275,23 @@ export function HouseholdScreen() {
               <View style={styles.flex}>
                 <Text style={styles.previewTitle}>Made for your people.</Text>
                 <Text style={styles.previewText}>
-                  This first version stays on your phone. Invites and live
-                  sharing with flatmates are coming next.
+                  This preview list stays on your phone. Set up your household
+                  separately; shared groceries are coming next.
                 </Text>
               </View>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenIdentity}
+              style={styles.primaryButton}
+            >
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color={colors.surface}
+              />
+              <Text style={styles.primaryButtonText}>Household & account</Text>
+            </Pressable>
             <Text style={styles.footer}>
               A little less house admin. A little more home.
             </Text>

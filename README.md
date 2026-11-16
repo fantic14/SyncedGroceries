@@ -6,7 +6,7 @@ Built with **Expo, React Native, and TypeScript**. The same app code targets bot
 
 ## Current status
 
-This is the **local starter**, not the connected MVP yet.
+The local grocery starter and **milestone 1 identity/household implementation** are available. Hosted acceptance testing is still pending.
 
 - Add groceries with a quantity, mark them bought, remove items, and clear bought items.
 - Write a household note; changes save automatically.
@@ -14,7 +14,11 @@ This is the **local starter**, not the connected MVP yet.
 - Three example groceries appear on first launch only. Remove them to start your own list.
 - Save failures are shown with a retry action. Unreadable saved data is not silently replaced.
 
-**Accounts, invitations, and cross-device synchronization are not implemented.** Nothing is sent to a backend. Removing the app or clearing its storage removes the local data. See the [initial project plan](docs/PLAN.md) for the connected MVP and release milestones.
+Open **Household & account** to use email-code sign-in, create or join a household, view members, and manage invitations. Owners can revoke invitations, remove members, and transfer ownership. Members can leave, and users can sign out or delete their account with confirmation. These features require a configured Supabase development project; follow the [backend setup guide](docs/BACKEND.md).
+
+**Groceries and notes still stay on the current phone.** The local preview is separate from signed-in households and is never uploaded automatically. Live grocery/note synchronization belongs to milestone 2. Removing the app or clearing its storage removes local preview data. See the [project plan](docs/PLAN.md) for the remaining milestones.
+
+Without `.env.local`, the local preview works and household setup explains that sharing is not connected. With valid public Supabase configuration, identity and membership requests go to that project. No hosted project was provisioned or migrated during implementation.
 
 ## Run locally
 
@@ -53,7 +57,8 @@ The browser preview does not replace testing on actual phones.
 ## Checks
 
 ```sh
-npm run check     # TypeScript, domain/data-validation tests, formatting
+npm run check     # TypeScript, unit + PostgreSQL access-control tests, formatting
+npm run test:db   # Actual migration and RLS tests; no Docker/cloud needed
 npm run build     # Export JS and assets for Android, iOS, and web
 ```
 
@@ -79,7 +84,7 @@ npx eas-cli@latest build --profile development --platform ios
 npx eas-cli@latest build --profile preview --platform android
 ```
 
-No Expo project, backend, signing credentials, or store listing has been created by this initialization. See the official [Expo build guide](https://docs.expo.dev/build/introduction/) for distribution details.
+No hosted Expo/Supabase project, signing credentials, or store listing has been created. See the official [Expo build guide](https://docs.expo.dev/build/introduction/) for distribution details. Rebuild native development clients after adding native modules such as SecureStore; an older installed development client will not include them.
 
 ## Project layout
 
@@ -93,8 +98,13 @@ src/features/household/
   storage.ts                   Versioned local persistence adapter
   useHousehold.ts               Hydration, actions, ordered writes, save status
   state.test.ts                 Domain and stored-data tests
+src/features/identity/          Email-code sign-in, household UI, hook and RPC service
+src/lib/                        Backend configuration and secure session storage
+supabase/migrations/            Transactional household schema, RPCs, RLS, grants
+tests/database/                 PostgreSQL access-control and invitation tests
+docs/BACKEND.md                 Hosted project setup, API contract, security boundaries
 docs/PLAN.md                    Scope, architecture, milestones, acceptance criteria
 docs/TESTING.md                 Phone testing and future sync scenarios
 ```
 
-Keep domain rules separate from the UI. Introduce authentication and a remote data layer in the next milestone; do not make screens call backend APIs directly. The starter's local snapshot storage will need a transactional cache and operation queue before promising reliable offline sync.
+Keep domain rules separate from the UI. Identity screens use a hook and service layer rather than calling backend APIs directly. Native sessions use encrypted SecureStore, split into small committed generations to support large sessions; the browser preview uses tab-scoped sessionStorage. No plaintext AsyncStorage fallback is used for authentication. An HTTP endpoint is accepted only on loopback for local development; hosted endpoints must use HTTPS. The starter's grocery snapshot storage still needs a transactional cache and operation queue before promising reliable offline sync.

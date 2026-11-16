@@ -42,13 +42,13 @@ Defer expense splitting, payments, receipts, barcode scanning, push notification
 | Connected offline storage | SQLite cache and durable operation outbox                                | Atomically save an edit and its pending operation, recover safely after termination        |
 | Distribution              | Expo development/preview builds, then TestFlight and Google Play testing | Test native behaviour before store release                                                 |
 
-Supabase is the proposed backend for the next milestone, not a configured dependency or a completed integration. Its Realtime service is not an offline synchronization engine: reconnection, caching, conflict handling, and durable retries must be built explicitly. The local starter's hook/reducer are intentionally small; they are not that sync engine.
+Supabase is now the implemented identity/household backend dependency. The schema and client flow are ready for a development project; no hosted project or email service is configured in this workspace. Its Realtime service is not an offline synchronization engine: reconnection, caching, conflict handling, and durable retries must be built explicitly. The local grocery hook/reducer are intentionally small; they are not that sync engine.
 
 References: [Expo project setup](https://docs.expo.dev/get-started/create-a-project/), [Supabase's Expo integration](https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native), [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security), [Expo builds](https://docs.expo.dev/build/introduction/).
 
 ## Planned cloud data model
 
-This is a design sketch, not a database migration.
+Identity, household, membership, invitation, and private invitation-attempt tables are implemented in the [initial migration](../supabase/migrations/202611160001_household_identity.sql). Grocery/note/operation tables below remain a design sketch for the next milestones.
 
 | Entity               | Core fields                                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -91,6 +91,8 @@ Use client-generated UUIDs for new records and operations. Use server-generated 
 This milestone demonstrates local interactions. It does not demonstrate sharing, native build success, or phone compatibility; those require the later checks below.
 
 ### 1. Identity and household boundaries
+
+**Status: implementation ready; hosted and phone acceptance checks pending.** Email OTP sign-in, native encrypted session persistence, create/join, owner invitation/member management, ownership transfer, leaving, and self-account deletion are implemented. The actual migration passes PostgreSQL/RLS tests locally. See [backend setup](BACKEND.md) to configure a project, apply the migration, and enable numeric-code emails. OTP entry avoids a redirect/deep-link dependency for this authentication flow.
 
 - Set up the Supabase development project and version-controlled database migrations.
 - Add email authentication, secure session persistence, and mobile deep-link handling where required by the selected email flow.
@@ -137,6 +139,6 @@ This milestone demonstrates local interactions. It does not demonstrate sharing,
 
 ## Next concrete task
 
-Start milestone 1 with the database migrations and automated household-isolation tests, then add sign-in and create/join-household screens. This establishes who owns and can access data before wiring grocery edits into a shared backend.
+Configure the Supabase development project using [BACKEND.md](BACKEND.md), then verify email delivery/session restoration and a two-account create/invite/join flow through the hosted API. Record iPhone/Samsung results before marking milestone 1 complete. Next, implement milestone 2's shared grocery/note schema and repository, keeping the local preview separate unless the user explicitly imports it.
 
-Before that integration, settle the backend project/region and email authentication flow. The current local starter requires neither decision nor credentials.
+The chosen authentication flow is numeric email OTP. The backend project and region still require configuration. The local preview and SQL tests work without credentials.
