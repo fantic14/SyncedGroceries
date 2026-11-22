@@ -6,11 +6,6 @@
 - Do not merge feature work into `master` or force-push shared history without an explicit request.
 - Stacked branches are appropriate when a later milestone depends on an earlier one. Review the later branch against its predecessor until the predecessor is merged.
 
-Milestones 2 and 3 are merged into `master`. Start new work from updated `master`; first-device setup uses:
-
-```text
-master
-  └─ feat/android-test-setup
-```
+Milestones 2 and 3 and the Android test setup are merged into `master`. Start new work from updated `master`.
 
 Milestone 2's five commits cover its database, repository, synchronization, UI, and setup documentation. Hosted and physical-device acceptance remain separate from local automated checks.

@@ -117,4 +117,4 @@ docs/TESTING.md                 Phone testing and future sync scenarios
 
 Keep domain rules separate from the UI. Native sessions use encrypted SecureStore; browser sessions are tab-scoped. Shared records/outbox are scoped to backend, user, and household. Auth never falls back to plaintext AsyncStorage. HTTP is accepted only on loopback for local development; hosted endpoints need HTTPS. Use one active browser tab per household; phones remain the primary target.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for feature branches and focused commits. Milestones 2 and 3 are merged into `master`; first-device setup continues on `feat/android-test-setup`.
+Milestones 2 and 3 and the Android test setup are merged into `master`. See [CONTRIBUTING.md](CONTRIBUTING.md) for feature branches and focused commits.
