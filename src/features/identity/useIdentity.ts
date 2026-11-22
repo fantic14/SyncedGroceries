@@ -403,7 +403,7 @@ export function useIdentity() {
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, next) => {
-      // Never await another auth call inside this callback: the SDK holds a lock.
+      // Keep this callback synchronous so it can run during an auth refresh.
       if (next) {
         positiveAuthEvent = true;
         terminalSignOut = false;

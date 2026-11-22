@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 
-import { createClient, processLock, type Session } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
 import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -82,7 +82,6 @@ export const supabase = config
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false,
-        lock: processLock,
       },
     })
   : null;
