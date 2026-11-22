@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   useEffect,
   useRef,
@@ -20,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Ionicons from '../../components/Ionicons';
 import { colors } from '../../theme';
 import { describeOwnChanges } from '../offline/recovery';
 import type { SharedItem } from './types';

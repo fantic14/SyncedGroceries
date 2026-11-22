@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRef, useState, type ComponentRef } from 'react';
 import {
   ActivityIndicator,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Ionicons from '../../components/Ionicons';
 import { colors } from '../../theme';
 import {
   ITEM_TITLE_LIMIT,
