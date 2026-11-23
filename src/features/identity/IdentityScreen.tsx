@@ -22,12 +22,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Ionicons from '../../components/Ionicons';
+import { ListScopeSwitch } from '../../components/ListNavigation';
 import { backendId } from '../../lib/supabase';
 import { colors } from '../../theme';
 import { getOfflinePersistence } from '../offline/platformPersistence';
 import { formatRecoveredWork, recoverOwnEdits } from '../offline/recovery';
 import { SharedHouseholdScreen } from '../shared/SharedHouseholdScreen';
 import { useSharedHousehold } from '../shared/useSharedHousehold';
+import { hasWidgetEdits } from '../widget/bridge';
 import { useIdentity } from './useIdentity';
 
 type Identity = ReturnType<typeof useIdentity>;
@@ -56,15 +58,18 @@ function HouseholdWorkspace({
   const controller = useSharedHousehold(
     household.id,
     identity.session!.user.id,
-    !identity.authRecoveryRequired && !identity.identityOffline,
+    identity.membershipVerified &&
+      !identity.authRecoveryRequired &&
+      !identity.identityOffline,
     identity.session!.access_token,
   );
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
   function guardAction(action: () => void) {
     if (controller.busy) return;
     if (
+      hasWidgetEdits(identity.session!.user.id) ||
       controller.pending ||
       (controller.snapshot &&
         controller.noteDraft !== controller.snapshot.note.body)
@@ -80,7 +85,15 @@ function HouseholdWorkspace({
           householdName={household.name}
           members={identity.members}
           controller={controller}
-          onClose={() => setOpen(false)}
+          offline={identity.identityOffline && !identity.authRecoveryRequired}
+          checkingMembership={
+            !identity.membershipVerified &&
+            identity.loading &&
+            !identity.authRecoveryRequired &&
+            !identity.identityOffline
+          }
+          onAccount={() => setOpen(false)}
+          onClose={onClose}
         />
       ) : (
         <IdentityContent
@@ -111,9 +124,9 @@ function HouseholdWorkspace({
               Remove this account’s saved work?
             </Text>
             <Text style={styles.body}>
-              Signing out or deleting your account removes its saved drafts and
-              queued edits from this phone. Sync or export them first. An edit
-              already accepted by the server will remain in the household.
+              Signing out or deleting your account removes unsynced edits and
+              drafts from this phone, including widget edits. Sync any edits you
+              want to keep first.
             </Text>
             <Button
               title="Keep editing"
@@ -157,11 +170,11 @@ function IdentityContent({
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const listener = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!identity.busy) onClose();
+      if (!identity.busy) (onOpenShared ?? onClose)();
       return true;
     });
     return () => listener.remove();
-  }, [identity.busy, onClose]);
+  }, [identity.busy, onClose, onOpenShared]);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -175,40 +188,40 @@ function IdentityContent({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
+            <ListScopeSwitch
+              scope="household"
+              onSwitch={onClose}
+              disabled={identity.busy}
+            />
             <View style={styles.header}>
-              <View style={styles.brand}>
-                <View style={styles.mark}>
-                  <Ionicons
-                    name="people-outline"
-                    size={24}
-                    color={colors.surface}
-                  />
-                </View>
-                <Text style={styles.brandName}>Your household</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Return to the local grocery preview"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: identity.busy }}
-                disabled={identity.busy}
-                onPress={onClose}
-                style={[styles.iconButton, identity.busy && styles.dimmed]}
+              <Text
+                accessibilityRole="header"
+                style={[styles.brandName, styles.flex]}
               >
-                <Ionicons name="close-outline" size={26} color={colors.ink} />
-              </Pressable>
+                {onOpenShared ? 'Household settings' : 'Household list'}
+              </Text>
+              {onOpenShared && (
+                <Pressable
+                  accessibilityLabel="Back to household list"
+                  accessibilityRole="button"
+                  disabled={identity.busy}
+                  onPress={onOpenShared}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="close-outline" size={25} color={colors.ink} />
+                </Pressable>
+              )}
             </View>
 
             {!identity.configured ? (
               <Card>
                 <Text accessibilityRole="header" style={styles.title}>
-                  Sharing is not connected yet.
+                  Sharing is unavailable
                 </Text>
                 <Text style={styles.body}>
-                  You can keep using your grocery list and notes on this phone.
-                  Household sign-in and invitations will be available once
-                  sharing is connected.
+                  This app needs a backend connection to open household lists.
                 </Text>
-                <Button title="Back to my list" onPress={onClose} />
+                <Button title="Open personal list" onPress={onClose} />
               </Card>
             ) : (
               <>
@@ -227,7 +240,7 @@ function IdentityContent({
                     />
                   </Card>
                 )}
-                {identity.identityOffline && (
+                {identity.identityOffline && identity.household && (
                   <Card>
                     <Text style={styles.sectionTitle}>
                       Using your saved household
@@ -279,7 +292,10 @@ function IdentityContent({
 
                 {identity.loading &&
                 (!identity.session ||
-                  (!identity.householdLoaded && !identity.household)) ? (
+                  (!identity.household &&
+                    (!identity.householdLoaded ||
+                      (!identity.membershipVerified &&
+                        !identity.identityOffline)))) ? (
                   <View accessibilityLiveRegion="polite" style={styles.loading}>
                     <ActivityIndicator color={colors.green} />
                     <Text style={styles.body}>Opening your household…</Text>
@@ -307,7 +323,6 @@ function IdentityContent({
                   <HouseholdDashboard
                     key={`${identity.session.user.id}:${identity.household.id}`}
                     identity={identity}
-                    onOpenShared={onOpenShared}
                     onConfirmationLayout={(y) =>
                       scroll.current?.scrollTo({
                         y: Math.max(0, y - 20),
@@ -322,18 +337,16 @@ function IdentityContent({
                   />
                 )}
 
-                {identity.session && (
-                  <AccountActions
-                    key={identity.session.user.id}
-                    identity={identity}
-                    guardAction={guardAccountAction}
-                  />
-                )}
+                {identity.session &&
+                  (!identity.loading || identity.householdLoaded) && (
+                    <AccountActions
+                      key={identity.session.user.id}
+                      identity={identity}
+                      guardAction={guardAccountAction}
+                    />
+                  )}
               </>
             )}
-            <Text style={styles.footer}>
-              Your local grocery preview stays separate from your household.
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -525,14 +538,13 @@ function EmailSignIn({ identity }: { identity: Identity }) {
 
   return (
     <Card>
-      <Text style={styles.eyebrow}>ONE HOME. YOUR PEOPLE.</Text>
       <Text accessibilityRole="header" style={styles.title}>
-        {sentTo ? 'Check your email.' : 'Make yourself at home.'}
+        {sentTo ? 'Check your email' : 'Sign in to share a list'}
       </Text>
       <Text style={styles.body}>
         {sentTo
           ? `Enter the sign-in code sent to ${sentTo}. Check your spam folder if it hasn’t arrived.`
-          : 'Sign in with an email code to create a household or join your flatmates. No password to remember.'}
+          : 'We’ll email you a sign-in code.'}
       </Text>
 
       {sentTo ? (
@@ -603,7 +615,7 @@ function EmailSignIn({ identity }: { identity: Identity }) {
             />
           </Field>
           <Button
-            title={identity.busy ? 'Sending…' : 'Send me a sign-in code'}
+            title={identity.busy ? 'Sending…' : 'Send code'}
             disabled={identity.busy || !validEmail}
             onPress={() => void send()}
           />
@@ -626,14 +638,6 @@ function HouseholdSetup({ identity }: { identity: Identity }) {
 
   return (
     <Card>
-      <Text style={styles.eyebrow}>LET’S GET EVERYONE TOGETHER</Text>
-      <Text accessibilityRole="header" style={styles.title}>
-        Find your people.
-      </Text>
-      <Text style={styles.body}>
-        Create a home for your flatmates, or use an invitation from the person
-        who already set one up.
-      </Text>
       <View style={styles.tabs}>
         {(['create', 'join'] as const).map((value) => (
           <Pressable
@@ -655,7 +659,7 @@ function HouseholdSetup({ identity }: { identity: Identity }) {
           </Pressable>
         ))}
       </View>
-      <Field label="What should your flatmates call you?">
+      <Field label="Your name">
         <TextInput
           accessibilityLabel="Your display name"
           editable={!identity.busy}
@@ -702,8 +706,8 @@ function HouseholdSetup({ identity }: { identity: Identity }) {
           identity.busy
             ? 'Please wait…'
             : mode === 'create'
-              ? 'Create our household'
-              : 'Join my flatmates'
+              ? 'Create household'
+              : 'Join household'
         }
         disabled={identity.busy || !canSubmit}
         onPress={() =>
@@ -724,11 +728,9 @@ type Confirmation =
 function HouseholdDashboard({
   identity,
   onConfirmationLayout,
-  onOpenShared,
 }: {
   identity: Identity;
   onConfirmationLayout: (y: number) => void;
-  onOpenShared?: () => void;
 }) {
   const { household, session } = identity;
   const invitation = identity.generatedInvite;
@@ -791,25 +793,9 @@ function HouseholdDashboard({
   return (
     <>
       <Card>
-        <Text style={styles.eyebrow}>YOUR HOME, TOGETHER</Text>
         <Text accessibilityRole="header" style={styles.title}>
           {household.name}
         </Text>
-        <Text style={styles.body}>
-          {isOwner
-            ? 'You manage this household. Invite your people and keep everyone in the same place.'
-            : 'You’re part of the household. Your household owner can invite more flatmates.'}
-        </Text>
-        <View style={styles.notice}>
-          <Ionicons name="leaf-outline" size={22} color={colors.green} />
-          <Text style={styles.noticeText}>
-            Your shared groceries and note live here. The separate local preview
-            is never uploaded automatically.
-          </Text>
-        </View>
-        {onOpenShared && (
-          <Button title="Open shared groceries & note" onPress={onOpenShared} />
-        )}
         <Button
           title="Refresh household"
           secondary
@@ -820,7 +806,7 @@ function HouseholdDashboard({
 
       <Card>
         <Text accessibilityRole="header" style={styles.sectionTitle}>
-          Who lives here
+          Members
         </Text>
         {identity.members.map((member) => (
           <View style={styles.member} key={member.user_id}>
@@ -878,12 +864,9 @@ function HouseholdDashboard({
       {isOwner && (
         <Card>
           <Text accessibilityRole="header" style={styles.sectionTitle}>
-            Bring your people in
+            Invitations
           </Text>
-          <Text style={styles.body}>
-            Each invitation is private, expires, and works for one person.
-            Generate a new one for each flatmate.
-          </Text>
+          <Text style={styles.body}>Each code can be used by one person.</Text>
           <Button
             title={identity.busy ? 'Please wait…' : 'Create an invitation'}
             disabled={identity.busy}
@@ -1055,15 +1038,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 10 },
-  mark: {
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   brandName: {
     color: colors.ink,
     fontSize: 19,
@@ -1093,12 +1067,6 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.ink, fontSize: 19, fontWeight: '700' },
   body: { color: colors.muted, fontSize: 15, lineHeight: 23 },
   caption: { color: colors.muted, fontSize: 12, lineHeight: 19 },
-  eyebrow: {
-    color: colors.green,
-    fontSize: 10,
-    letterSpacing: 1.8,
-    fontWeight: '800',
-  },
   field: { gap: 7 },
   fieldLabel: {
     color: colors.muted,
@@ -1175,15 +1143,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   selectedTabText: { color: colors.surface },
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: colors.paleGreen,
-  },
-  noticeText: { color: colors.ink, fontSize: 13, lineHeight: 21, flex: 1 },
   member: {
     gap: 12,
     borderTopWidth: 1,
@@ -1228,11 +1187,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.noteBorder,
     backgroundColor: colors.note,
-  },
-  footer: {
-    fontSize: 11,
-    lineHeight: 18,
-    textAlign: 'center',
-    color: colors.muted,
   },
 });

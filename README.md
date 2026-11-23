@@ -8,17 +8,13 @@ Built with **Expo, React Native, and TypeScript**. The same app code targets bot
 
 The local preview, identity/households, shared groceries/notes, and **milestone 3 durable offline cache/replay** are implemented. The Supabase development schema is deployed, and the first signed Android preview APK has built successfully. Signed-in flows and phone acceptance testing are still pending; see the [deployment record and installer](docs/DEPLOYMENT.md).
 
-- Add groceries with a quantity, mark them bought, remove items, and clear bought items.
-- Write a household note; changes save automatically.
-- Lists and notes persist on the current device using AsyncStorage.
-- Three example groceries appear on first launch only. Remove them to start your own list.
-- Save failures are shown with a retry action. Unreadable saved data is not silently replaced.
+Choose **On this phone** for your personal groceries and note. The app starts with an empty personal list on a new install and remembers which list you last opened. Personal changes save on this device.
 
-Open **Household & account** to use email-code sign-in, create or join a household, view members, and manage invitations. Owners can revoke invitations, remove members, and transfer ownership. Members can leave, and users can sign out or delete their account with confirmation. These features require a configured Supabase development project; follow the [backend setup guide](docs/BACKEND.md).
+Choose **Household** to sign in by email and create or join a household. Members go straight to their shared list. Use the settings gear for members, invitations and account actions. Open the household online once to enable offline editing. Grocery edits and saved notes queue on the device and sync after reconnecting. Typing a household note saves a draft until you tap **Save household note**. [Backend setup](docs/BACKEND.md) · [Offline editing](docs/OFFLINE.md)
 
-After joining a household, open **shared groceries & note** to add/edit groceries, mark them bought, remove them, and save a shared note. Realtime subscriptions and foreground/periodic reconciliation fetch authorized snapshots. Grocery edits use server revisions; independent-field edits can merge, while conflicting note text is preserved for an explicit choice. See the [shared backend setup](docs/SHARED_BACKEND.md) and apply both migrations in order.
+### Android home-screen widget
 
-**The local preview stays separate** and is never uploaded automatically. Shared edits/drafts now persist in native SQLite (IndexedDB in the browser preview), survive restart, and replay after reconnecting. Open the household online once before using it offline. Note typing saves a local draft; Save household note queues it for the household. Explicit sign-out/account switching removes that account's local records after a warning. See [offline behaviour and limitations](docs/OFFLINE.md).
+Install a native Android build from this revision and open your household list once while connected. Long-press an empty area of the home screen, open **Widgets**, add the Synced Groceries widget, and choose your household. Tap **+** to add an item or tap its checkbox to mark it bought. Tap the household name or an item to open the compact list, where swiping right toggles completion and swiping left deletes the item. Android reserves horizontal gestures on the home screen for launcher navigation. [Android widget gestures](https://developer.android.com/develop/ui/views/appwidgets/overview#gestures)
 
 Without `.env.local`, the local preview works and household setup explains that sharing is not connected. With valid public Supabase configuration, identity and membership requests go to that project. The development project has both migrations applied; public configuration remains outside Git and is set separately in Expo's preview environment.
 

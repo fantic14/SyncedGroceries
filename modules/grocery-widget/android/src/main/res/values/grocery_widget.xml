@@ -1,0 +1,11 @@
+<resources>
+    <string name="grocery_widget_name">Household groceries</string>
+    <string name="grocery_widget_description">View and update a household grocery list.</string>
+    <string name="grocery_widget_add">Add an item</string>
+    <style name="GroceryWidgetDialog" parent="@android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">#216958</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+        <item name="android:windowMinWidthMajor">65%</item>
+    </style>
+</resources>

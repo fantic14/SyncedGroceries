@@ -13,6 +13,11 @@ import { getOfflinePersistence } from '../offline/platformPersistence';
 import type { OfflinePersistence } from '../offline/persistence';
 import { quarantineHousehold } from '../offline/quarantine';
 import {
+  acceptWidgetAccount,
+  confirmWidgetMembership,
+  forgetWidgetAccount,
+} from '../widget/bridge';
+import {
   createIdentityCache,
   isRetryableIdentityFailure,
   needsIdentityReauthentication,
@@ -29,6 +34,7 @@ export function useIdentity() {
   const [snapshot, setSnapshot] = useState<HouseholdSnapshot>(empty);
   const [loading, setLoading] = useState(backendConfigured);
   const [householdLoaded, setHouseholdLoaded] = useState(false);
+  const [membershipVerified, setMembershipVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [identityOffline, setIdentityOffline] = useState(false);
@@ -62,6 +68,7 @@ export function useIdentity() {
     value: ReturnType<typeof createIdentityCache>;
     hydrated: boolean;
     blocked: boolean;
+    persistedSnapshot: string | null;
   } | null>(null);
   const cleanup = useRef<Promise<unknown>>(Promise.resolve());
   const failedCleanup = useRef(new Set<string>());
@@ -72,6 +79,7 @@ export function useIdentity() {
   } | null>(null);
 
   const purgeUser = useCallback((userId: string) => {
+    forgetWidgetAccount(backendId, userId);
     if (user.current === userId) {
       request.current++;
       if (mounted.current) setLoading(false);
@@ -126,6 +134,7 @@ export function useIdentity() {
       value: createIdentityCache(opened, backendId, userId),
       hydrated: false,
       blocked: false,
+      persistedSnapshot: null,
     };
     return cache.current;
   }, []);
@@ -136,7 +145,6 @@ export function useIdentity() {
       if (!userId || explicitSignOut.current) return false;
       const attempt = ++request.current;
       setLoading(true);
-      setError(null);
       let cached: Awaited<ReturnType<typeof ensureCache>> = null;
       try {
         try {
@@ -145,26 +153,27 @@ export function useIdentity() {
             const saved = await cached.value.load();
             const recoveryHouse = await cached.value.loadRecoveryHouseholdId();
             if (
-              saved &&
               mounted.current &&
               request.current === attempt &&
               user.current === userId
             ) {
               cached.hydrated = true;
-              setSnapshot(saved);
-              const member = saved.members.find(
-                (entry) => entry.user_id === userId,
-              );
-              knownMembership.current =
-                saved.household && member
-                  ? {
-                      householdId: saved.household.id,
-                      joinedAt: member.joined_at,
-                    }
-                  : null;
-              setHouseholdLoaded(true);
-              setIdentityOffline(true);
-              setRecoveryHouseholdId(recoveryHouse);
+              if (saved) {
+                cached.persistedSnapshot = JSON.stringify(saved);
+                setSnapshot(saved);
+                const member = saved.members.find(
+                  (entry) => entry.user_id === userId,
+                );
+                knownMembership.current =
+                  saved.household && member
+                    ? {
+                        householdId: saved.household.id,
+                        joinedAt: member.joined_at,
+                      }
+                    : null;
+                setHouseholdLoaded(true);
+                setRecoveryHouseholdId(recoveryHouse);
+              }
             }
           }
         } catch {
@@ -226,7 +235,13 @@ export function useIdentity() {
           )
             return false;
           knownMembership.current = quarantined ? nextMembership : previous;
-          setSnapshot(result);
+          confirmWidgetMembership(backendId, userId, result);
+          const signature = JSON.stringify(result);
+          setSnapshot((current) =>
+            signature === JSON.stringify(current) ? current : result,
+          );
+          setMembershipVerified(quarantined);
+          setError(null);
           setIdentityOffline(false);
           setAuthRecoveryRequired(false);
           setInviteReceipt((receipt) =>
@@ -243,12 +258,18 @@ export function useIdentity() {
               : null,
           );
           setHouseholdLoaded(true);
-          if (quarantined && cached && (!cached.blocked || repairCache)) {
+          if (
+            quarantined &&
+            cached &&
+            (repairCache ||
+              (!cached.blocked && signature !== cached.persistedSnapshot))
+          ) {
             try {
               await cached.value.save(result);
               const recoveryHouse =
                 await cached.value.loadRecoveryHouseholdId();
               cached.blocked = false;
+              cached.persistedSnapshot = signature;
               if (mounted.current && request.current === attempt) {
                 setCacheError(null);
                 setRecoveryHouseholdId(recoveryHouse);
@@ -293,12 +314,15 @@ export function useIdentity() {
             )
               return false;
             knownMembership.current = quarantined ? null : previous;
+            forgetWidgetAccount(backendId, userId);
             setSnapshot(empty);
             setHouseholdLoaded(false);
+            setMembershipVerified(false);
             setIdentityOffline(false);
             if (quarantined && cached && !cached.blocked) {
               try {
                 await cached.value.save(empty);
+                cached.persistedSnapshot = JSON.stringify(empty);
                 const recoveryHouse =
                   await cached.value.loadRecoveryHouseholdId();
                 if (mounted.current && request.current === attempt)
@@ -371,6 +395,7 @@ export function useIdentity() {
     function acceptSession(next: Session | null, localOnly = false) {
       if (!mounted.current || lifetime.current !== epoch) return;
       const id = next?.user.id ?? null;
+      acceptWidgetAccount(backendId, id);
       if (user.current !== id) {
         const previous = user.current ?? recoveryUser.current;
         if (previous && id && previous !== id)
@@ -383,11 +408,13 @@ export function useIdentity() {
         request.current++;
         setSnapshot(empty);
         setHouseholdLoaded(false);
+        setMembershipVerified(false);
+        setIdentityOffline(false);
         setError(null);
         setCacheError(null);
         setRecoveryHouseholdId(null);
         setInviteReceipt(null);
-        setLoading(false);
+        setLoading(id !== null);
       }
       sessionRef.current = next;
       setSession(next);
@@ -487,15 +514,20 @@ export function useIdentity() {
         if (user.current) void refreshIdentity();
       } else if (Platform.OS !== 'web') client.auth.stopAutoRefresh();
     });
+    let connected: boolean | null = null;
     const network = NetInfo.addEventListener((state) => {
       if (!mounted.current || lifetime.current !== epoch) return;
-      if (state.isConnected === false || state.isInternetReachable === false)
-        setIdentityOffline(true);
+      const reachable =
+        state.isConnected !== false && state.isInternetReachable !== false;
+      if (connected === reachable) return;
+      connected = reachable;
+      if (!connected) setIdentityOffline(true);
       else if (user.current && !explicitSignOut.current) void refreshIdentity();
     });
     const membershipTimer = setInterval(() => {
       if (
         AppState.currentState === 'active' &&
+        connected !== false &&
         user.current &&
         !explicitSignOut.current
       )
@@ -598,6 +630,7 @@ export function useIdentity() {
     configured: backendConfigured,
     loading,
     householdLoaded,
+    membershipVerified,
     session,
     ...snapshot,
     error: error ?? cacheError,

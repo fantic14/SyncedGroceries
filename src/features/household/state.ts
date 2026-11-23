@@ -54,18 +54,7 @@ export function createItem(
 }
 
 export function createInitialState(): HouseholdState {
-  // Examples are created only when there is no existing local list.
-  const now = new Date().toISOString();
-
-  return {
-    version: 1,
-    items: [
-      createItem('example-milk', 'Milk', '1 carton', now),
-      createItem('example-eggs', 'Eggs', '6', now),
-      createItem('example-pasta', 'Pasta', '2 packs', now),
-    ],
-    note: '',
-  };
+  return { version: 1, items: [], note: '' };
 }
 
 export function householdReducer(

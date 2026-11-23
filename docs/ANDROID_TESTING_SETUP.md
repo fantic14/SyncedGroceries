@@ -140,8 +140,8 @@ An export from `npm run build` is a bundling check, not an APK. Record the actua
 ## 6. Verify the first phone run
 
 1. Launch the installed APK with the development server stopped.
-2. Open **Household & account**, request a code, and sign in with the intended tester email.
-3. Create a household, then open **shared groceries & note**. The initial local preview is separate and does not synchronize.
+2. Open **Household**, request a code, and sign in with the intended tester email.
+3. Create a household and check that its shared list opens. Select **On this phone** to switch to your personal list.
 4. Add, edit, and buy groceries; save a shared note. Close and reopen the app.
 5. Open the household online, turn on airplane mode, add several items, and save a note. Force-stop and reopen while still offline, then reconnect. Verify edits survive and synchronize without duplicates.
 6. Use a second account on another phone or one browser-preview tab, join using an owner-issued household invitation, and verify live changes in both directions. The browser counterpart needs its own development server while testing; the installed APK does not.

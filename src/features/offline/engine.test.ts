@@ -234,6 +234,29 @@ function fixture(start = initial) {
   };
 }
 
+test('background reconciliation keeps editors available while persisting and replaying changes', async () => {
+  const setup = fixture();
+  const store = await setup.ready();
+  await store.actions.addItem('Bread', '1');
+  const activity: boolean[] = [];
+  const unsubscribe = store.subscribe(() =>
+    activity.push(store.getState().busy),
+  );
+
+  store.setOnline(true);
+  await store.sync();
+  unsubscribe();
+
+  assert.ok(activity.length > 0);
+  assert.ok(activity.every((busy) => !busy));
+  assert.equal(setup.applications(), 1);
+  assert.equal(store.getState().queuedCount, 0);
+  const reads = setup.reads();
+  store.setOnline(true);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(setup.reads(), reads);
+});
+
 test('offline cache, queued edits, and unsaved note draft survive a store restart', async () => {
   const setup = fixture();
   const first = await setup.ready();

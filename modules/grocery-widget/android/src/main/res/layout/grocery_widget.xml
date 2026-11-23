@@ -1,0 +1,23 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/grocery_widget_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp"
+        android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/grocery_widget_header">
+        <TextView android:id="@+id/grocery_widget_title"
+            android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent"
+            android:gravity="center_vertical" android:paddingLeft="16dp" android:paddingRight="4dp"
+            android:singleLine="true" android:ellipsize="end" android:textColor="#FFFFFF"
+            android:textSize="16sp" android:textStyle="bold" android:text="@string/grocery_widget_name" />
+        <TextView android:id="@+id/grocery_widget_add"
+            android:layout_width="48dp" android:layout_height="match_parent" android:gravity="center"
+            android:text="+" android:textColor="#FFFFFF" android:textSize="26sp"
+            android:contentDescription="@string/grocery_widget_add" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/grocery_widget_rows"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+    <TextView android:id="@+id/grocery_widget_message"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingLeft="14dp" android:paddingRight="12dp" android:paddingTop="4dp"
+        android:textColor="#586D62" android:textSize="13sp" android:maxLines="2"
+        android:ellipsize="end" android:text="@string/grocery_widget_description" />
+</LinearLayout>

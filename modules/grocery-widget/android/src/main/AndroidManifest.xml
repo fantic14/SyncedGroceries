@@ -1,0 +1,32 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <application>
+        <receiver
+            android:name=".GroceryWidgetProvider"
+            android:exported="false"
+            android:label="@string/grocery_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/grocery_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".WidgetConfigurationActivity"
+            android:exported="true"
+            android:theme="@style/GroceryWidgetDialog">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".WidgetListActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.widget.panel"
+            android:theme="@style/GroceryWidgetDialog"
+            android:windowSoftInputMode="adjustResize" />
+        <service android:name=".WidgetTaskService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false" />
+    </application>
+</manifest>
