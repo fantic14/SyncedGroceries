@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  createInitialState,
   createItem,
   householdReducer,
   parseHouseholdState,
@@ -22,6 +23,10 @@ test('saved groceries and notes survive a serialization round trip', () => {
   const original = fixture();
   original.items[0]!.completed = true;
   assert.deepEqual(parseHouseholdState(JSON.stringify(original)), original);
+});
+
+test('a new personal list starts empty', () => {
+  assert.deepEqual(createInitialState(), { version: 1, items: [], note: '' });
 });
 
 test('an intentionally empty list stays empty when reloaded', () => {
