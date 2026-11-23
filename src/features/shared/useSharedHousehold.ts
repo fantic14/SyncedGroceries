@@ -80,8 +80,10 @@ export function useSharedHousehold(
         void NetInfo.fetch()
           .then((network) => {
             if (cancelled) return;
+            // A transition back online already triggers reconciliation.
+            const wasOnline = store.getState().online;
             updateNetwork(network);
-            if (connected) void store.actions.refresh();
+            if (connected && wasOnline) void store.actions.refresh();
           })
           .catch(() => {
             if (!cancelled) store.setOnline(false);

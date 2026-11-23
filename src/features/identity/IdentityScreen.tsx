@@ -56,7 +56,9 @@ function HouseholdWorkspace({
   const controller = useSharedHousehold(
     household.id,
     identity.session!.user.id,
-    !identity.authRecoveryRequired && !identity.identityOffline,
+    identity.membershipVerified &&
+      !identity.authRecoveryRequired &&
+      !identity.identityOffline,
     identity.session!.access_token,
   );
   const [open, setOpen] = useState(false);

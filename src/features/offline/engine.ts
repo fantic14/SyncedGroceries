@@ -324,9 +324,15 @@ export function createOfflineStore({
     lastSyncedAt: null,
   };
 
+  let renderedDocument: OfflineDocument | null = null;
   function publish() {
     if (!active) return;
-    const snapshot = visible(document, userId);
+    // Connection and activity updates can reuse the current item projection.
+    const snapshot =
+      document === renderedDocument
+        ? state.snapshot
+        : visible(document, userId);
+    renderedDocument = document;
     const failed = document.queue.filter(
       (operation) => operation.status !== 'queued',
     );
@@ -420,10 +426,13 @@ export function createOfflineStore({
 
   function transaction(
     change: (next: OfflineDocument) => void,
+    source: 'edit' | 'sync' = 'edit',
   ): Promise<boolean> {
     const started = epoch;
-    localWrites++;
-    publish();
+    if (source === 'edit') {
+      localWrites++;
+      publish();
+    }
     const result = writeQueue
       .catch(() => undefined)
       .then(async () => {
@@ -435,20 +444,18 @@ export function createOfflineStore({
           if (!active || epoch !== started) return false;
           document = next;
           storageError = null;
-          publish();
           return true;
         } catch {
           if (active && epoch === started) {
             storageError =
               'Couldn’t save offline data. Your last edit has not been queued; keep the app open and retry.';
             error = storageError;
-            publish();
           }
           return false;
         }
       })
       .finally(() => {
-        localWrites--;
+        if (source === 'edit') localWrites--;
         publish();
       });
     writeQueue = result;
@@ -555,7 +562,7 @@ export function createOfflineStore({
             1000 * 2 ** Math.min(6, operation?.attempts ?? next.readAttempts),
           );
       }
-    });
+    }, 'sync');
     if (saved) {
       error = message;
       publish();
@@ -652,7 +659,7 @@ export function createOfflineStore({
               prepared = true;
             }
           }
-        });
+        }, 'sync');
         if (!saved || !prepared) {
           error = document.queue[0]?.message ?? error;
           publish();
@@ -724,7 +731,7 @@ export function createOfflineStore({
             next.queue.shift();
             next.nextRetryAt = 0;
           }
-        });
+        }, 'sync');
         if (!saved) return false;
         if (
           result.status === 'conflict' &&
@@ -779,7 +786,7 @@ export function createOfflineStore({
               next.lastSyncedAt = now();
               next.nextRetryAt = 0;
               next.readAttempts = 0;
-            }))
+            }, 'sync'))
           )
             return false;
           success = await flush(started);
@@ -1053,11 +1060,13 @@ export function createOfflineStore({
     hydrate,
     sync,
     setOnline: (value: boolean) => {
+      if (online === value) return;
       online = value;
       publish();
       if (value) kick();
     },
     setConnection: (value: OfflineState['connection']) => {
+      if (connection === value) return;
       connection = value;
       publish();
     },
