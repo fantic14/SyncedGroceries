@@ -14,7 +14,7 @@ Unit tests cover stored-data validation, empty-list preservation, shopping actio
 
 Follow [backend setup](BACKEND.md). These are required before marking milestone 1 complete; no hosted project or phone run is implied by passing the SQL tests.
 
-- [ ] No environment configuration: grocery preview opens and Household & account explains sharing is not connected.
+- [ ] No environment configuration: personal list opens and Household explains that sharing is unavailable.
 - [ ] Configure a development project, apply the migrations, enable custom SMTP, and then set the email template to `{{ .Token }}`. New free-tier projects require SMTP before editing templates; verify the sender can deliver to both test accounts.
 - [ ] Request a code, enter an invalid/expired code, resend after cooldown, then sign in successfully.
 - [ ] Close/reopen on both phones: encrypted native session restores; background/resume refresh works.
@@ -36,12 +36,12 @@ Follow [backend setup](BACKEND.md). These are required before marking milestone 
 
 Run on an iPhone and a Samsung Galaxy phone, plus the browser preview for a quick smoke test. Record device model, OS version, Expo/development build version, and result. These checks are a checklist, not a claim that the devices have already been tested.
 
-- [ ] First launch shows three example groceries and an empty note.
+- [ ] First launch shows an empty personal list and note. Reopening the app restores the last selected list.
 - [ ] Blank/whitespace-only names cannot be added.
 - [ ] Add a long grocery name and a quantity such as `2 cartons`; text remains readable.
 - [ ] Leaving quantity blank creates quantity `1`.
 - [ ] Mark bought, mark unbought, remove one item, and clear bought items.
-- [ ] Remove every item, wait for “Saved on this phone,” close/reopen; examples do not return.
+- [ ] Remove every item, wait for “Saved on this phone,” close/reopen; the list stays empty.
 - [ ] Edit the note, switch tabs, wait for saved status, close/reopen; text survives.
 - [ ] Airplane mode does not prevent local edits or reopening cached data.
 - [ ] Save errors are visible and Retry attempts another write without dropping in-memory changes.
@@ -59,7 +59,7 @@ The independent local preview debounces saving by 300 ms. Wait for its saved sta
 Milestones 2 and 3 provide shared online edits and durable offline replay. Run these checks against a configured project and actual phones; local SQLite/PostgreSQL tests do not establish native runtime or Realtime delivery.
 
 - [ ] Apply both migrations and verify shared tables are enabled in the Realtime publication.
-- [ ] Use the shared screen on both devices; a new household starts with an empty shared list/note, not local preview examples.
+- [ ] Use the shared screen on both devices; a new household starts with an empty shared list/note, independently of personal groceries.
 - [ ] Edit a grocery's quantity on one device and title on the other; independent fields merge without a whole-record overwrite.
 - [ ] Concurrent same-field grocery edits show a conflict and retain the edit form for review.
 - [ ] Concurrent note changes show both the latest server text and the local draft. “Keep mine” uses the latest revision and can conflict again safely.
@@ -94,3 +94,11 @@ Milestones 2 and 3 provide shared online edits and durable offline replay. Run t
 | Delete an account or leave as the last owner            | Agreed ownership/retention rules apply consistently                    |
 
 Test Samsung both with normal settings and power saving enabled. Treat background Realtime disconnections as expected; foreground reconciliation must restore correctness. Add automated backend and sync tests as those milestones are implemented.
+
+## Android widget and input checks
+
+- [ ] On a native build, open a signed-in household online. Switch to **On this phone** and back. The household list opens directly and its controls stay in place as the membership check finishes.
+- [ ] Focus the grocery name, wait through two 15-second refreshes, then type while a second member changes an item. The keyboard stays open and the draft survives. Repeat with an item being edited.
+- [ ] Add the launcher widget and choose the household. Tap **+** to add an item and tap its checkbox to buy it. Verify both edits in the app and on another member’s device.
+- [ ] Tap a widget item. Swipe right in the compact list to toggle it and swipe left to delete it. Repeat offline, reconnect and verify that both devices converge.
+- [ ] Sign out or change household. The old widget clears its grocery names, and actions from the old binding cannot affect the new household.
