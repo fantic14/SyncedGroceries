@@ -13,6 +13,11 @@ import { getOfflinePersistence } from '../offline/platformPersistence';
 import type { OfflinePersistence } from '../offline/persistence';
 import { quarantineHousehold } from '../offline/quarantine';
 import {
+  acceptWidgetAccount,
+  confirmWidgetMembership,
+  forgetWidgetAccount,
+} from '../widget/bridge';
+import {
   createIdentityCache,
   isRetryableIdentityFailure,
   needsIdentityReauthentication,
@@ -74,6 +79,7 @@ export function useIdentity() {
   } | null>(null);
 
   const purgeUser = useCallback((userId: string) => {
+    forgetWidgetAccount(backendId, userId);
     if (user.current === userId) {
       request.current++;
       if (mounted.current) setLoading(false);
@@ -229,6 +235,7 @@ export function useIdentity() {
           )
             return false;
           knownMembership.current = quarantined ? nextMembership : previous;
+          confirmWidgetMembership(backendId, userId, result);
           const signature = JSON.stringify(result);
           setSnapshot((current) =>
             signature === JSON.stringify(current) ? current : result,
@@ -307,6 +314,7 @@ export function useIdentity() {
             )
               return false;
             knownMembership.current = quarantined ? null : previous;
+            forgetWidgetAccount(backendId, userId);
             setSnapshot(empty);
             setHouseholdLoaded(false);
             setMembershipVerified(false);
@@ -387,6 +395,7 @@ export function useIdentity() {
     function acceptSession(next: Session | null, localOnly = false) {
       if (!mounted.current || lifetime.current !== epoch) return;
       const id = next?.user.id ?? null;
+      acceptWidgetAccount(backendId, id);
       if (user.current !== id) {
         const previous = user.current ?? recoveryUser.current;
         if (previous && id && previous !== id)

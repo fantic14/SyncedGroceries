@@ -28,6 +28,7 @@ import { getOfflinePersistence } from '../offline/platformPersistence';
 import { formatRecoveredWork, recoverOwnEdits } from '../offline/recovery';
 import { SharedHouseholdScreen } from '../shared/SharedHouseholdScreen';
 import { useSharedHousehold } from '../shared/useSharedHousehold';
+import { hasWidgetEdits } from '../widget/bridge';
 import { useIdentity } from './useIdentity';
 
 type Identity = ReturnType<typeof useIdentity>;
@@ -67,6 +68,7 @@ function HouseholdWorkspace({
   function guardAction(action: () => void) {
     if (controller.busy) return;
     if (
+      hasWidgetEdits(identity.session!.user.id) ||
       controller.pending ||
       (controller.snapshot &&
         controller.noteDraft !== controller.snapshot.note.body)
@@ -113,9 +115,9 @@ function HouseholdWorkspace({
               Remove this account’s saved work?
             </Text>
             <Text style={styles.body}>
-              Signing out or deleting your account removes its saved drafts and
-              queued edits from this phone. Sync or export them first. An edit
-              already accepted by the server will remain in the household.
+              Signing out or deleting your account removes unsynced edits and
+              drafts from this phone, including widget edits. Sync any edits you
+              want to keep first.
             </Text>
             <Button
               title="Keep editing"

@@ -4,7 +4,9 @@ node_modules/
 dist/
 web-build/
 coverage/
-android/
+/android/
+/modules/*/android/build/
+/modules/*/android/.gradle/
 ios/
 out-tsc/
 tmp/

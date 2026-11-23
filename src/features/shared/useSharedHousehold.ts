@@ -8,6 +8,7 @@ import { createOfflineStore } from '../offline/engine';
 import { createLazyCacheFactory } from '../offline/lazyCache';
 import { getOfflinePersistence } from '../offline/platformPersistence';
 import type { OfflineDocument } from '../offline/types';
+import { mirrorWidgetItems } from '../widget/bridge';
 import { createSharedRepository } from './repository';
 
 export function useSharedHousehold(
@@ -21,12 +22,17 @@ export function useSharedHousehold(
       createOfflineStore({
         householdId,
         userId,
-        repository: createSharedRepository({
-          rpc: (name, args) => {
-            if (!supabase) throw new Error('Sharing is not connected yet.');
-            return supabase.rpc(name, args);
-          },
-        }),
+        repository: mirrorWidgetItems(
+          createSharedRepository({
+            rpc: (name, args) => {
+              if (!supabase) throw new Error('Sharing is not connected yet.');
+              return supabase.rpc(name, args);
+            },
+          }),
+          backendId,
+          userId,
+          householdId,
+        ),
         newId: randomUUID,
         cacheFactory: createLazyCacheFactory<OfflineDocument>(
           getOfflinePersistence,
